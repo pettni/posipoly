@@ -24,9 +24,9 @@ Look at an example in `examples/` to see how to do optimization.
 
 ## Documentation
 
-There are two ways to represent polynomial variables in an optimization problem: gram matrix representation and coefficient vector representation. Let `Z(x)` be a vector of monomials, then a polynomial of the form `Z(x)' * C * Z(x)`, where `C` is a symmetric matrix, is in gram matrix representation. A polynomial of the form `c' * Z(x)` where `c` is a vector of coefficients, is in coefficient vector representation. Positivity constraints are imposed on the gram matrix, so positive variables should be defined in gram matrix representation. Otherwise, coefficient vector representation is preferable since it is more parsimonious for a given degree.
+There are two ways to represent polynomial variables in an optimization problem: gram matrix representation and coefficient vector representation. Let `Z(x)` be a vector of monomials, then a polynomial of the form `Z(x)' * C * Z(x)`, where `C` is a symmetric matrix, is in gram matrix representation. A polynomial of the form `c' * Z(x)` where `c` is a vector of coefficients, is in coefficient vector representation. Positivity constraints are imposed on the gram matrix, so positive variables should be defined in gram matrix representation. In particular, a gram polynomial is SOS if C is positive semi-definite (PSD), it is SDSOS if C is scaled diagonally dominant (SDD), and it is DSOS if C is diagonally dominant.
 
-To avoid redundancy also gram matrices are represented in vector form. For a symmetric matrix
+For polynomial variables that are not positive, coefficient vector representation is preferable since it is more parsimonious than gram representation for a given degree. To avoid redundancy also gram matrices are represented in vector form. For a symmetric matrix
 ```
 C = [C11 C12 ... C1n
      C12 C22 ... C2n
