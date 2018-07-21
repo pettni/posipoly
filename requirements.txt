@@ -1,0 +1,7 @@
+# use with `pip install -r requirements.txt`
+
+numpy
+scipy
+sympy
+matplotlib
+mpld3
