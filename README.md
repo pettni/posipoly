@@ -53,7 +53,7 @@ T = trans.as_Tcc()
 
 ### Solve a ppp problem
 
-The `solve_ppp` function imposes positivity constraint on gram matrices that are represented in vector form.   Let `mat` be the inverse transformation, i.e. `mat(vec(C)) = C`. 
+The `solve_ppp` function imposes positivity constraints on gram matrices that are represented in vector form. Let `mat` be the inverse transformation, i.e. `mat(vec(C)) = C`. 
 
 PP constraints are added by specifying that segments of the variable vector represent such matrices. 
 
