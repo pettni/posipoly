@@ -22,7 +22,7 @@ Look at an example in `examples/` to see how to do optimization.
  - Efficient representation of linear polynomial transformations via the PolyLinTrans class.
  - Unified interface for setting up and solving positive polynomial programming (ppp) problems. Currently supports optimization in the PSD (for SOS) and SDD (for SDSOS) cones.
 
-## Documentation
+## Math background and code overview
 
 There are two ways to represent polynomial variables in an optimization problem: gram matrix representation and coefficient vector representation. Let `Z(x)` be a vector of monomials of to some given maximal degree, then a polynomial of the form `Z(x)' * C * Z(x)`, where `C` is a symmetric matrix, is in **gram matrix representation**. A polynomial of the form `c' * Z(x)` where `c` is a vector of coefficients, is in **coefficient vector representation**. Positivity constraints are imposed on the gram matrix, so positive variables should be defined in gram matrix representation. In particular, a gram polynomial is SOS if C is positive semi-definite (PSD), it is SDSOS if C is scaled diagonally dominant (SDD), and it is DSOS if C is diagonally dominant (DD).
 
