@@ -31,7 +31,7 @@ For polynomial variables that are not positive, coefficient vector representatio
 C = [C11 C12 ... C1n
      C12 C22 ... C2n
       :   :       :
-     C1n C2n ... Cnn
+     C1n C2n ... Cnn]
 ```
 the vector representation is
 ```
