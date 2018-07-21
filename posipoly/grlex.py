@@ -1,9 +1,10 @@
+'''utilities for grlex ordering'''
+
 from math import sqrt, ceil
 from functools import cmp_to_key
 import scipy.sparse
 from scipy.misc import comb
 
-'''utilities for grlex ordering'''
 def count_monomials_leq(n, d):
   '''Number of monomials in n variables of degree less than or equal to d'''
   return int(comb(n+d, d))

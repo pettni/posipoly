@@ -43,7 +43,7 @@ def test_sparse_matrix():
 	L = PolyLinTrans(2,2)
 	L[1,0][0,1] = 3
 	L.updated()
-	spmat = L.as_Tcv()
+	spmat = L.as_Tcm()
 	np.testing.assert_equal(spmat.shape[1], 6)
 	np.testing.assert_equal(spmat.shape[0], 3)
 	np.testing.assert_equal(spmat.row[0], 1)
@@ -52,7 +52,7 @@ def test_sparse_matrix():
 
 def test_sparse_matrix2():
 	L = PolyLinTrans.eye(2,2,2)
-	spmat = L.as_Tcv()
+	spmat = L.as_Tcm()
 	for (i, idx) in enumerate(spmat.row):
 		np.testing.assert_equal(idx, spmat.col[i]) # diagonal
 		if i in [0,3,5]:

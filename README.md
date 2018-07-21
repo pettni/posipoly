@@ -16,10 +16,10 @@ Look at an example in `examples/` to see how to do optimization.
 ## Features
 
  - Efficient representation of linear polynomial transformations via the PolyLinTrans class
- - Add SDSOS constraints to a Mosek optimization task
+ - Add SOS/SDSOS constraints to a Mosek optimization task
 
 ## TODO list
 
- - Create methods to set up SOS programs
+ - Implement class for sparsity patterns and sparse optimization
  - Interface with other solvers than Mosek (or interface with a package like cvxpy)
- - Abstract syntax to make it more user friendly
+ - Abstract syntax to make it more user friendly (add variables, expressions...)

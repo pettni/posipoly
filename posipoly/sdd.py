@@ -3,16 +3,14 @@
  	over (scaled) diagonally dominant sums of squares polynomials.
 """
 
-import sympy as sp
+from math import sqrt
 import numpy as np
 
 import mosek
-from mosek.fusion import *
 
-import sys
-from posipoly.utils import k_to_ij, ij_to_k
+from posipoly.utils import *
 
-def _sdd_index(i,j,n):
+def sdd_index(i,j,n):
 	""" An n x n sdd matrix A can be written as A = sum Mij.
 		Given Mij's stored as a (n-1)*n/2 x 3 matrix, where each row represents a 2x2 symmetric matrix, return
 	    the indices i_s, j_s such that A_ij = sum_s Mij(i_s, j_s) """
@@ -39,8 +37,8 @@ def add_sdd_mosek(task, start, length):
 	assert(start + length <= numvar)
 
 	# side of matrix
-	n = int((np.sqrt(1+8*length) - 1)/2)
-	assert( n == (np.sqrt(1+8*length) - 1)/2 )
+	n = int((sqrt(1+8*length) - 1)/2)
+	assert( n == (sqrt(1+8*length) - 1)/2 )
 
 	# add new vars and constraints as
 	# 
@@ -63,7 +61,7 @@ def add_sdd_mosek(task, start, length):
 	task.appendcons(length)
 
 	# put negative identity matrix
-	task.putaijlist( range(numcon, numcon + length), range(start, start+length), [-1.] * length)
+	task.putaijlist( range(numcon, numcon+length), range(start, start+length), [-1.] * length)
 
 	# build 'D' matrix
 	D_row_idx = []
@@ -72,7 +70,7 @@ def add_sdd_mosek(task, start, length):
 
 	for row in range(length):
 		i,j = k_to_ij(row, length)
-		sdd_idx = _sdd_index(i,j,n)
+		sdd_idx = sdd_index(i,j,n)
 		D_row_idx += [numcon + row] * len(sdd_idx) 
 		D_col_idx += [numvar + 3*k + l for (k,l) in sdd_idx ]
 		D_vals += [ 2. if l == 0 else 1. for (k,l) in sdd_idx ]
@@ -84,6 +82,44 @@ def add_sdd_mosek(task, start, length):
 
 	# add cone constraints
 	task.appendconesseq( [mosek.conetype.rquad] * numvar_new, [0.0] * numvar_new, [3] * numvar_new, numvar )
+
+
+def add_spd_mosek(task, start, length):
+	''' 
+		Given a mosek task with variable vector x,
+		add variables and constraints to task such that
+		x[ start, start + length ] = vec(A),
+		for A an spd matrix
+	'''
+
+	# number of existing variables / constraints
+	numvar = task.getnumvar()
+	numbarvar = task.getnumbarvar()
+	numcon = task.getnumcon()
+
+	assert(start >= 0)
+	assert(start + length <= numvar)
+
+	# side of matrix
+	n = int((sqrt(1+8*length) - 1)/2)
+	assert( n == (sqrt(1+8*length) - 1)/2 )
+
+	# add semidef variable
+	task.appendbarvars([n])
+
+	# add length equality constraints
+	task.appendcons(length)
+	
+	# add constraint that x[ start, start+length ] is equal to sdp var
+	for k in range(length):
+		i, j = k_to_ij(k, length) 
+		mat_k = task.appendsparsesymmat(n, [j], [i], [1. if j==i else 0.5])
+		task.putarow(numcon + k, [start + k], [-1.])
+		task.putbaraij(numcon + k, numbarvar, [mat_k], [1.])
+
+	# put = 0 for new constraints
+	task.putconboundslice( numcon, numcon + length, [mosek.boundkey.fx] * length, [0.] * length, [0.] * length )
+
 
 def is_dd(A):
 	""" Returns 'True' if A is dd (diagonally dominant), 'False' otherwise """
@@ -101,30 +137,38 @@ def is_dd(A):
 
 	return True
 
+
 def is_sdd(A):
-	""" Returns 'True' if A is sdd (scaled diagonally dominant), 'False' otherwise """
 
-	epsilon = 1e-5
+	env = mosek.Env() 
+	task = env.Task(0,0)
 
-	A_arr = np.array(A)
-	n = A_arr.shape[0]
+	n = A.shape[0]
+	assert(A.shape[0] == A.shape[1])
+	
+	vec = mat_to_vec(A)
+	print(vec)
 
-	# Define a LP
-	M = Model()
+	numvar = int(n*(n+1)/2)
+	numcon = numvar
 
-	Y = M.variable(n, Domain.greaterThan(1.))
-	for i in range(n):
-		K_indices = [i,[j for j in range(n) if i != j]]
-		Y_indices = [j for j in range(n) if i != j]
-		M.constraint( Expr.sub( Expr.mul(A_arr[i,i], Y.index(i) ), 
-					            Expr.dot(np.abs(A_arr[K_indices]).tolist(), 
-					            	Y.pick(Y_indices) )
-					          ),
-					          Domain.greaterThan(-epsilon)
-					) 
+	# add variables and constraints
+	task.appendvars(numvar)
+	task.appendcons(numcon)
 
-	M.objective(ObjectiveSense.Minimize, Expr.sum(Y))
+	# make vars unbounded (fr: free)
+	task.putvarboundslice(0, numvar, [mosek.boundkey.fr] * numvar, [0.]*numvar, [0.]*numvar )
 
-	M.solve()
+	# add constraints
+	task.putaijlist(range(numvar), range(numvar), [1 for i in range(numvar)])
+	task.putconboundslice(0, numvar, [mosek.boundkey.fx] * numcon, vec, vec)
 
-	return False if M.getDualSolutionStatus() == SolutionStatus.Certificate else True
+	add_sdd_mosek(task, 0, numcon)
+
+	task.optimize()
+
+	if task.getsolsta(mosek.soltype.itr) != mosek.solsta.prim_infeas_cer:
+		return True
+
+	print(task.getsolsta(mosek.soltype.itr))
+	return False

@@ -284,7 +284,7 @@ class PolyLinTrans(object):
 				v.append(val)
 		return sp.coo_matrix( (v, (i, j)), shape = (nrow, ncol) )
 
-	def as_Tcv(self):
+	def as_Tcm(self):
 		""" Return a representation A of the transformation from a vector
 			representing a symmetric matrix.
 
