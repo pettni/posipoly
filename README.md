@@ -46,7 +46,7 @@ A linear polynomial transformation is a mapping between polynomial rings such th
 trans = PolyLinTrans.eye(2,2,2,2)
 
 # for a gram polynomial Z(x)' * S * Z(x), get T such that transformed polynomial is (T * vec(S))' * Z(x)
-T = trans.as_Tcm(): 
+T = trans.as_Tcm()
 # for a coefficient polynomial c' * Z(x), get T such that transformed polynomial is (T * c)' * Z(x)
 T = trans.as_Tcc()
 ```
@@ -61,10 +61,10 @@ PP constraints are added by specifying that segments of the variable vector repr
 # General format:
 #   min  c' x   
 #   s.t. Aeq x = beq
-#        Aiq x <= beq
-#        mat(x[s,s+l]) in pp_cone for s,l in ppp_list
-solve_ppp(c, Aeq, beq, Aiq, biq, ppp_list, 'psd')   # optimize in the PSD cone
-solve_ppp(c, Aeq, beq, Aiq, biq, ppp_list, 'sdd')   # same problem in the SDD cone
+#        Aiq x <= biq
+#        mat(x[s,s+l]) in pp_cone for s,l in pp_list
+solve_ppp(c, Aeq, beq, Aiq, biq, pp_list, 'psd')   # optimize in the PSD cone
+solve_ppp(c, Aeq, beq, Aiq, biq, pp_list, 'sdd')   # same problem in the SDD cone
 ```
 
 ## TODO list
