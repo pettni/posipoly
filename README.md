@@ -41,13 +41,13 @@ of length n(n+1)/2.
 
 ### Retrieve constraints in coefficient form
 
-A linear polynomial transformation is a mapping between polynomial rings such that the transformed coefficients are linear in the original coefficients. Examples include the identity transform (possibly between different dimensions and degrees), differentiation, multiplication with a given polynomial, etc. Many such transformations are implemented in `PolyLinTrans` as static member methods. Furthermore, methods to provide transformation matrices of two types are available: gram to coefficient, and coefficient to coefficient.
+A linear polynomial transformation is a mapping between polynomial rings such that the transformed coefficients are linear in the original coefficients. Examples include the identity transform (possibly between different dimensions and degrees), differentiation, multiplication with a given polynomial, etc. Many such transformations are implemented in `PolyLinTrans` as static member methods. Furthermore, methods to provide sparse (`scipy.sparse.coo_matrix`) transformation matrices of two types are available: gram to coefficient, and coefficient to coefficient.
 ```
 trans = PolyLinTrans.eye(2,2,2,2)
 
-# for a gram polynomial Z(x)' * S * Z(x), get T such that transformed polynomial is (T * vec(S))' * Z(x)
+# get T such that for a gram polynomial Z(x)' * S * Z(x), transformed polynomial is (T * vec(S))' * Z(x)
 T = trans.as_Tcm()
-# for a coefficient polynomial c' * Z(x), get T such that transformed polynomial is (T * c)' * Z(x)
+# get T such that for a coefficient polynomial c' * Z(x), transformed polynomial is (T * c)' * Z(x)
 T = trans.as_Tcc()
 ```
 
