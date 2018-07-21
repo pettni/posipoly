@@ -24,7 +24,7 @@ Look at an example in `examples/` to see how to do optimization.
 
 ## Documentation
 
-There are two ways to represent polynomial variables in an optimization problem: gram matrix representation and coefficient vector representation. Let `Z(x)` be a vector of monomials, then a polynomial of the form `Z(x)' * C * Z(x)`, where `C` is a symmetric matrix, is in gram matrix representation. A polynomial of the form `c' * Z(x)` where `c` is a vector of coefficientsis in coefficient vector representation. Positivity constraints are imposed on the gram matrix, so positive variables should be defined in gram matrix representation. Otherwise, coefficient vector representation is preferable since it is more parsimonious for a given degree.
+There are two ways to represent polynomial variables in an optimization problem: gram matrix representation and coefficient vector representation. Let `Z(x)` be a vector of monomials, then a polynomial of the form `Z(x)' * C * Z(x)`, where `C` is a symmetric matrix, is in gram matrix representation. A polynomial of the form `c' * Z(x)` where `c` is a vector of coefficients, is in coefficient vector representation. Positivity constraints are imposed on the gram matrix, so positive variables should be defined in gram matrix representation. Otherwise, coefficient vector representation is preferable since it is more parsimonious for a given degree.
 
 To avoid redundancy also gram matrices are represented in vector form. For a symmetric matrix
 ```
@@ -41,7 +41,7 @@ of length n(n+1)/2.
 
 ### Retrieve constraints in coefficient form
 
-A linear polynomial transformation is a mapping between polynomial rings such that the transformed coefficients are linear in the original coefficients. Examples include the identity transform (possibly between different dimensions and degrees), differentiation, multiplication with a given polynomial, etc. Many such transformations are implemented in `PolyLinTrans` as static member methods. Furthermore, methods to provide transformation matrices of two types: gram to coefficient, and coefficient to coefficient.
+A linear polynomial transformation is a mapping between polynomial rings such that the transformed coefficients are linear in the original coefficients. Examples include the identity transform (possibly between different dimensions and degrees), differentiation, multiplication with a given polynomial, etc. Many such transformations are implemented in `PolyLinTrans` as static member methods. Furthermore, methods to provide transformation matrices of two types are available: gram to coefficient, and coefficient to coefficient.
 ```
 trans = PolyLinTrans.eye(2,2,2,2)
 
