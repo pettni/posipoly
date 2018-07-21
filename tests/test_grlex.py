@@ -24,7 +24,7 @@ def test_grlex_iter():
 
   for k in range(600):
     idx2 = next(iterator)
-    np.testing.assert_array_less( grlex_comp( idx1, idx2 ), 0 )
+    np.testing.assert_equal( (grlex_key( idx1) < grlex_key(idx2 )), True )
     idx1 = idx2
 
 def test_grlex_iter2():

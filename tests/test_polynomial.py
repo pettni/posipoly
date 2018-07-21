@@ -9,3 +9,12 @@ def test_evaluate():
   np.testing.assert_equal(p.evaluate(1,3), 10)
   np.testing.assert_equal(p.evaluate(3,1), 10)
 
+def test_from_grlex():
+
+  p = Polynomial.from_mon_coefs(2, [1,1,1])
+
+  np.testing.assert_equal(p.d, 1)
+  np.testing.assert_equal(p.evaluate(1,1), 3)
+  np.testing.assert_equal(p.evaluate(1,-1), 1)
+  np.testing.assert_equal(p.evaluate(1,-2), 0)
+

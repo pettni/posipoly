@@ -2,7 +2,7 @@ from math import ceil, sqrt
 
 def k_to_ij(k, L):
   """ 
-  Given a symmetric matrix Q represented by a vector
+  Given a gram matrix Q represented by a vector
     V = [Q_00, ... Q_0n, Q_11, ..., Q_1n, Q22, ..., ] of length L,
     for given k, compute i,j s.t. Q_ij = V[k]
   """
@@ -32,23 +32,21 @@ def ij_to_k(i,j,L):
   k_at1 = int((n + n-i_at1)*(i_at1-1)/2 + j_at1)
   return k_at1 - 1
 
-
 def vec_to_mat(vec):
-  # convert vector to square matrix
+  # convert vector representation of gram matrix to gram matrix matrix
   L = len(vec)
   n = int((sqrt(1+8*L) - 1)/2)
 
   return [[vec[ij_to_k(i,j,L)] for i in range(n) ] for j in range(n)]
 
-
 def mat_to_vec(mat):
-
+  # retrieve vector representation gram matrix
   n = mat.shape[0]
   L = int(n*(n+1)/2)
 
   ret = [0. for i in range(L)]
   for k in range(L):
     i,j = k_to_ij(k, L)
-    ret[k] = mat[i,j]
+    ret[k] = (mat[i,j] + mat[j,i]) / 2
 
   return ret

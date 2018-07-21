@@ -4,11 +4,13 @@
 	to (slow) symbolic computations.
 """
 
+import copy
 from math import ceil, sqrt
 
 from itertools import chain
 import scipy.sparse as sp
 
+from posipoly.polynomial import Polynomial
 from posipoly.grlex import *
 
 class PolyLinTransRow(object):
@@ -40,12 +42,6 @@ class PolyLinTrans(object):
 		self.d0 = 0   	# initial degree
 		self.d1 = 0		  # final degree
 		self.cols = {}
-
-	def rows(self):
-		return count_monomials_leq(self.n1, self.d1)
-
-	def cols(self):
-		return count_monomials_leq(self.n0, self.d0)
 
 	@staticmethod
 	def eye(n0, n1, d0, d1=None):
@@ -157,6 +153,14 @@ class PolyLinTrans(object):
 		p.updated() # degrees become misleading here..
 		return p
 
+	def transform(self, poly):
+		'''transform a Polynomial'''
+		if not poly.d <= self.d0:
+			raise Exception('polynomial has too high degree')
+
+		new_mon_coefs =	self.as_Tcc().dot(poly.mon_coefs(self.d0))
+		return Polynomial.from_mon_coefs(self.n1, new_mon_coefs)
+
 	def __getitem__(self, midx):
 		if len(midx) != self.n0:
 			raise TypeError('Multiindex does not match polynomial dimension')
@@ -207,7 +211,7 @@ class PolyLinTrans(object):
 		""" Difference of two linear transformations """
 		if not self.n0 == other.n0 and self.n1 == other.n1:
 			raise TypeError('Dimension mismatch')
-		ret = self
+		ret = copy.deepcopy(self)
 		for midx1, col in other.cols.items():
 			for midx2, val in col.coeffs.items():
 				try:
@@ -241,7 +245,7 @@ class PolyLinTrans(object):
 		return ret
 
 	def __neg__(self):
-		ret = self
+		ret = copy.deepcopy(self)
 		for midx1, col in ret.cols.items():
 			for midx2, val in col.coeffs.items():
 				col.coeffs[midx2] = -val
@@ -284,11 +288,11 @@ class PolyLinTrans(object):
 				v.append(val)
 		return sp.coo_matrix( (v, (i, j)), shape = (nrow, ncol) )
 
-	def as_Tcm(self):
+	def as_Tcg(self):
 		""" Return a representation A of the transformation from a vector
-			representing a symmetric matrix.
+			v representing a gram matrix S = mat(v).
 
-			That is, if p = vec(S) is a symmetric matrix vector, 
+			That is, if p contains the coefficients of a gram matrix, 
 				A p 
 			is a grlex coefficient vector of the transformed polynomial Trans( x^T S x ).
 		"""
@@ -310,18 +314,5 @@ class PolyLinTrans(object):
 		nrow = count_monomials_leq(self.n1, self.d1)
 		ncol = len_vec
 		return scipy.sparse.coo_matrix( (v, (i, j)), shape = (nrow, ncol) )
-
-def eval_Lintrans(num_var, trans, vec):
-	""" Given a vector of numerical values representing monomial coefficients, output the
-	    transformed vector """
-	res = [0.]* count_monomials_leq(num_var, trans.d1)
-	for i in range(len(vec)):
-		midx = index_to_grlex(i, num_var)
-		for midx2, v in trans[midx].coeffs.items():
-			j = grlex_to_index(midx2)
-			res[j] += v * vec[i]
-	return res
-
-
 
 

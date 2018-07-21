@@ -37,13 +37,25 @@ class Polynomial(object):
   def from_sympy(poly):
     return Polynomial( dict(poly.as_poly().terms()) )
 
+  @staticmethod
+  def from_mon_coefs(n, mon_coefs):
+    ''' create a polynomial in n variables from a list of coefficients (grlex ordering) '''
+
+    max_deg = sum(index_to_grlex(len(mon_coefs), n))
+
+    it = grlex_iter((0,) * n, max_deg)
+
+    coefs = {exp: coef for exp, coef in zip(it, mon_coefs)}
+
+    return Polynomial(coefs)
+
   def mon_coefs(self, max_deg):
     '''return grlex-ordered vector of all coefficients up to max_deg (including zeros)'''
     return np.array([self.data[exponent] if exponent in self.data.keys() else 0
                      for exponent in grlex_iter( tuple(0 for i in range(self.n)), max_deg)])
   
-
   def evaluate(self, *args):
+    '''evaluate polynomial at given point'''
     if not len(args) == self.n:
       raise Error('invalid number of inputs')
 

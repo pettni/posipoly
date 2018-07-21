@@ -1,7 +1,6 @@
 '''utilities for grlex ordering'''
 
 from math import sqrt, ceil
-from functools import cmp_to_key
 import scipy.sparse
 from scipy.misc import comb
 
@@ -13,17 +12,17 @@ def count_monomials_eq(n, d):
   '''Number of monomials in n variables of degree equal to d'''
   return int(comb(n+d-1, d))
 
-def grlex_to_index(multiindex):
+def grlex_to_index(grlex):
   """Returns the grlex ordering number for a given multi-index. Can be expensive for large degrees"""
-  total_degree = sum(multiindex)
-  n = len(multiindex)
+  total_degree = sum(grlex)
+  n = len(grlex)
 
   index = count_monomials_leq(n, total_degree - 1)
   remaining_degree = total_degree
   for i in range(n):
-    for k in range(multiindex[i]):
+    for k in range(grlex[i]):
       index += count_monomials_eq(n-1-i, remaining_degree - k)
-    remaining_degree -= multiindex[i]
+    remaining_degree -= grlex[i]
   return index
 
 def index_to_grlex(index, n):
@@ -53,11 +52,8 @@ def index_to_grlex(index, n):
 
   return tuple(grlex)
 
-
-def grlex_comp(midx1, midx2):
-  '''comparison function in grlex'''
-  return (sum(midx1) > sum(midx2)) - (sum(midx1) < sum(midx2)) or  \
-         (midx1 > midx2) - (midx1 < midx2)
+def grlex_key(midx):
+  return (sum(midx),) + tuple(midx)
 
 def multi_grlex_iter(midx, groups, degrees):
   '''
@@ -202,8 +198,7 @@ def vec_to_sparse_matrix(L, dim):
 
   # sort coef and row indices simultaneously w.r.t grlex ordering
   sorted_ks = zip(coef, range(L))
-  key = cmp_to_key(lambda a1, a2: grlex_comp(exp[a1[1]],exp[a2[1]])) # py3 hack
-  sorted_ks = sorted(sorted_ks, key = key)
+  sorted_ks = sorted(sorted_ks, key = lambda cL: grlex_key( exp[cL[1]] ))
 
   # go through to add cols
   mon_iter = grlex_iter( (0,) * dim )

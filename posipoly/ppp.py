@@ -5,6 +5,7 @@
 
 from math import sqrt
 import numpy as np
+import scipy.sparse as sp
 
 import mosek
 
@@ -20,6 +21,103 @@ def sdd_index(i,j,n):
 	else:
 		return [[ij_to_k(min(i,j), max(i,j)-1, num_vars),2]]
 
+
+def setup_ppp(c, Aeq, beq, Aiq, biq, ppp_list, pp_cone):
+	'''set up a positive polynomial programming problem
+			min    c' x
+			s.t.   Aeq x = beq
+			       Aiq x <= biq
+
+			       x[ ppp_list[i][0], ppp_list[i][0] + ppp_list[i][1] ]   for i in range(len(ppp_list)) 
+			       is a positive matrix C stored as a list 
+			       [c00 c01 ... c0n  c11 c12 ... c1n ... cnn] 
+			       of length n * (n+1)/2
+
+		 positivity constraints are enforces according to the value of pp_cone
+		 pp_cone = 'psd'   C is positive semi-definite
+		 pp_cone = 'sdd'   C scaled diagonally dominant
+	'''
+	numvar = len(c)
+
+	if Aeq is None:
+		Aeq = sp.coo_matrix( (0, numvar) )
+		beq = np.zeros(0)
+
+	if Aiq is None:
+		Aiq = sp.coo_matrix( (0, numvar) )
+		biq = np.zeros(0)
+
+	if type(Aeq) is not sp.coo_matrix:
+		Aeq = sp.coo_matrix(Aeq)
+
+	if type(Aiq) is not sp.coo_matrix:
+		Aiq = sp.coo_matrix(Aiq)
+
+	numcon_eq = Aeq.shape[0]
+	numcon_iq = Aiq.shape[0]
+
+	if numcon_eq != len(beq) or numcon_iq != len(biq) :
+		raise Exception('invalid dimensions')
+
+	if Aeq.shape[1] != numvar or Aiq.shape[1] != numvar:
+		raise Exception('invalid dimensions')
+
+	env = mosek.Env() 
+	task = env.Task(0,0)
+
+	# Add free variables and objective
+	task.appendvars(numvar)
+	task.putvarboundslice(0, numvar, [mosek.boundkey.fr] * numvar, [0.]*numvar, [0.]*numvar )
+	task.putcslice(0, numvar, c)
+	task.putobjsense(mosek.objsense.minimize)
+
+	# add eq constraints
+	task.appendcons(numcon_eq)
+	task.putaijlist(Aeq.row, Aeq.col, Aeq.data)
+	task.putconboundslice(0, numcon_eq, [mosek.boundkey.fx] * numcon_eq, beq, beq )
+
+	# add iq constraints
+	task.appendcons(numcon_iq)
+	task.putaijlist(Aiq.row, Aiq.col, Aiq.data)
+	task.putconboundslice(0, numcon_iq, [mosek.boundkey.up] * numcon_iq, [0.] * numcon_iq, biq )
+
+	# add pp constraints
+	for start, length in ppp_list:
+		if pp_cone == 'psd':
+			add_psd_mosek(task, start, length)
+		elif pp_cone == 'sdd':
+			add_psd_mosek(task, start, length)
+
+	return task
+
+def solve_ppp(c, Aeq, beq, Aiq, biq, ppp_list, pp_cone):
+	'''solve a positive polynomial programming problem
+			min    c' x
+			s.t.   Aeq x = beq
+			       Aiq x <= biq
+
+			       x[ ppp_list[i][0], ppp_list[i][0] + ppp_list[i][1] ]   for i in range(len(ppp_list)) 
+			       is a positive matrix C stored as a list 
+			       [c00 c01 ... c0n  c11 c12 ... c1n ... cnn] 
+			       of length n * (n+1)/2
+
+		 positivity constraints are enforces according to the value of pp_cone
+		 pp_cone = 'psd'   C is positive semi-definite
+		 pp_cone = 'sdd'   C scaled diagonally dominant
+	'''
+
+	task = setup_ppp(c, Aeq, beq, Aiq, biq, ppp_list, pp_cone)
+
+	task.optimize()
+
+	solsta = task.getsolsta(mosek.soltype.itr)
+
+	if (solsta == mosek.solsta.optimal):
+	    solution = [0.] * len(c)
+	    task.getxxslice(mosek.soltype.itr, 0, len(c), solution)
+	    return solution, solsta
+	else:
+	    return None, solsta
 
 def add_sdd_mosek(task, start, length):
 	''' 
@@ -84,12 +182,12 @@ def add_sdd_mosek(task, start, length):
 	task.appendconesseq( [mosek.conetype.rquad] * numvar_new, [0.0] * numvar_new, [3] * numvar_new, numvar )
 
 
-def add_spd_mosek(task, start, length):
+def add_psd_mosek(task, start, length):
 	''' 
 		Given a mosek task with variable vector x,
 		add variables and constraints to task such that
 		x[ start, start + length ] = vec(A),
-		for A an spd matrix
+		for A an psd matrix
 	'''
 
 	# number of existing variables / constraints
@@ -147,7 +245,6 @@ def is_sdd(A):
 	assert(A.shape[0] == A.shape[1])
 	
 	vec = mat_to_vec(A)
-	print(vec)
 
 	numvar = int(n*(n+1)/2)
 	numcon = numvar
@@ -170,5 +267,4 @@ def is_sdd(A):
 	if task.getsolsta(mosek.soltype.itr) != mosek.solsta.prim_infeas_cer:
 		return True
 
-	print(task.getsolsta(mosek.soltype.itr))
 	return False

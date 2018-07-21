@@ -43,7 +43,7 @@ def test_sparse_matrix():
 	L = PolyLinTrans(2,2)
 	L[1,0][0,1] = 3
 	L.updated()
-	spmat = L.as_Tcm()
+	spmat = L.as_Tcg()
 	np.testing.assert_equal(spmat.shape[1], 6)
 	np.testing.assert_equal(spmat.shape[0], 3)
 	np.testing.assert_equal(spmat.row[0], 1)
@@ -52,7 +52,7 @@ def test_sparse_matrix():
 
 def test_sparse_matrix2():
 	L = PolyLinTrans.eye(2,2,2)
-	spmat = L.as_Tcm()
+	spmat = L.as_Tcg()
 	for (i, idx) in enumerate(spmat.row):
 		np.testing.assert_equal(idx, spmat.col[i]) # diagonal
 		if i in [0,3,5]:
@@ -95,8 +95,19 @@ def test_integrate2():
 
 def test_evallintrans():
 	L = PolyLinTrans.eye(2,2,3)
-	p2 = eval_Lintrans(2, L, [1,2,3])
-	np.testing.assert_equal(p2[0:3], [1,2,3])
-	L = PolyLinTrans.diff(2,3,1)
-	p2 = eval_Lintrans(2, L, [1,2,3,4,5])
-	np.testing.assert_equal(p2[0:3], [2,8,5])
+	P = Polynomial({(1,0): 2, (0,1): 2})  # 2 x + 2 y
+
+	Pt = L.transform(P)
+
+	np.testing.assert_equal(Pt.evaluate(1,0), 2)
+	np.testing.assert_equal(Pt.evaluate(0,1), 2)
+	np.testing.assert_equal(Pt.evaluate(1,1), 4)
+
+	L = PolyLinTrans.diff(2,3,1)  # differentiation w.r.t. y
+	P = Polynomial({(2,0): 1, (0,2): 1})  # x^2 + y^2
+
+	Pt = L.transform(P)  									# should be 2y
+
+	np.testing.assert_equal(Pt.evaluate(0,1), 2)
+	np.testing.assert_equal(Pt.evaluate(0,2), 4)
+	np.testing.assert_equal(Pt.evaluate(1,0), 0)
