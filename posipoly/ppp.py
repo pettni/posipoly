@@ -71,15 +71,12 @@ def setup_ppp(c, Aeq, beq, Aiq, biq, ppp_list, pp_cone):
   task.putcslice(0, numvar, c)
   task.putobjsense(mosek.objsense.minimize)
 
-  # add eq constraints
-  task.appendcons(numcon_eq)
-  task.putaijlist(Aeq.row, Aeq.col, Aeq.data)
+  # add eq & iq constraints
+  A = sp.bmat([[Aeq], [Aiq]])
+  task.appendcons(numcon_eq + numcon_iq)
+  task.putaijlist(A.row, A.col, A.data)
   task.putconboundslice(0, numcon_eq, [mosek.boundkey.fx] * numcon_eq, beq, beq )
-
-  # add iq constraints
-  task.appendcons(numcon_iq)
-  task.putaijlist(Aiq.row, Aiq.col, Aiq.data)
-  task.putconboundslice(0, numcon_iq, [mosek.boundkey.up] * numcon_iq, [0.] * numcon_iq, biq )
+  task.putconboundslice(numcon_eq, numcon_eq+numcon_iq, [mosek.boundkey.up] * numcon_iq, [0.] * numcon_iq, biq )
 
   # add pp constraints
   for start, length in ppp_list:
@@ -90,7 +87,7 @@ def setup_ppp(c, Aeq, beq, Aiq, biq, ppp_list, pp_cone):
 
   return task
 
-def solve_ppp(c, Aeq, beq, Aiq, biq, ppp_list, pp_cone):
+def solve_ppp(c, Aeq, beq, Aiq, biq, ppp_list, pp_cone='sdp'):
   '''solve a positive polynomial programming problem
       min    c' x
       s.t.   Aeq x = beq

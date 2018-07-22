@@ -12,6 +12,7 @@ import scipy.sparse as sp
 
 from posipoly.polynomial import Polynomial
 from posipoly.grlex import *
+from posipoly.utils import double_factorial
 
 class PolyLinTransRow(object):
   """docstring for PolyLinTransRow"""
@@ -116,8 +117,8 @@ class PolyLinTrans(object):
     p.d0 = d0
     for idx in grlex_iter((0,)*n0, d0):
       new_idx = tuple(idx[i] for i in range(len(idx)) if i != xi)
-      if idx[xi] == 2:
-        p[idx][new_idx] = sigma**2
+      if idx[xi] > 0 and (idx[xi] % 2) == 0:
+        p[idx][new_idx] = sigma**idx[xi] * double_factorial(idx[xi]-1)
       if idx[xi] == 0:
         p[idx][new_idx] = 1
     p.updated()

@@ -159,3 +159,15 @@ def test_gaussian_expectation():
 
   np.testing.assert_equal(g_t.evaluate(0), 16)
   np.testing.assert_equal(g_t.evaluate(1), 33)
+
+def test_gaussian_expectation2():
+
+  g = Polynomial({(0,2): 1, (0,4):2})
+
+  L = PolyLinTrans.gaussian_expectation(n0=2, d0=4, xi=1, sigma=0.2)
+
+  g_t = L.transform(g)
+  np.testing.assert_equal(g_t.n, 1)
+
+  np.testing.assert_almost_equal(g_t.evaluate(0), 0.2**2 + 2*3*0.2**4)
+  np.testing.assert_almost_equal(g_t.evaluate(1), 0.2**2 + 2*3*0.2**4)
