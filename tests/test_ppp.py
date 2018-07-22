@@ -167,3 +167,28 @@ def test_sdd3():
   np.testing.assert_almost_equal(sol[0], 2.)
 
 
+def test_ppp():
+
+  Aiq = -np.eye(2)
+  biq = np.zeros(2)
+
+  c = [1, 1]
+
+  sol, sta = solve_ppp(c, None, None, Aiq, biq, [])
+  
+  np.testing.assert_equal(sta, mosek.solsta.optimal)
+  np.testing.assert_almost_equal(sol, [0,0])
+
+  Aeq = np.array([[1,0]])
+  beq = [1]
+
+  sol, sta = solve_ppp(c, Aeq, beq, Aiq, biq, [])
+  np.testing.assert_equal(sta, mosek.solsta.optimal)
+  np.testing.assert_almost_equal(sol, [1,0])
+
+  Aeq = np.array([[1,2]])
+  beq = [1]
+
+  sol, sta = solve_ppp(c, Aeq, beq, Aiq, biq, [])
+  np.testing.assert_equal(sta, mosek.solsta.optimal)
+  np.testing.assert_almost_equal(sol, [0,0.5])

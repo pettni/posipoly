@@ -52,8 +52,13 @@ def mat_to_vec(mat):
 
   return ret
 
-
 def multinomial(params):
     if len(params) == 1:
         return 1
     return binom(sum(params), params[-1]) * multinomial(params[:-1])
+
+def double_factorial(n):
+  ret = 1
+  for i in range(n, 0, -2):
+    ret *= i
+  return ret
