@@ -75,8 +75,9 @@ def setup_ppp(c, Aeq, beq, Aiq, biq, ppp_list, pp_cone):
   A = sp.bmat([[Aeq], [Aiq]])
   task.appendcons(numcon_eq + numcon_iq)
   task.putaijlist(A.row, A.col, A.data)
-  task.putconboundslice(0, numcon_eq, [mosek.boundkey.fx] * numcon_eq, beq, beq )
-  task.putconboundslice(numcon_eq, numcon_eq+numcon_iq, [mosek.boundkey.up] * numcon_iq, [0.] * numcon_iq, biq )
+  task.putconboundslice(0, numcon_eq + numcon_iq, 
+                        [mosek.boundkey.fx] * numcon_eq + [mosek.boundkey.up] * numcon_iq,
+                        list(beq) +  [0.] * numcon_iq, list(beq) + list(biq) )
 
   # add pp constraints
   for start, length in ppp_list:
