@@ -111,3 +111,51 @@ def test_evallintrans():
   np.testing.assert_equal(Pt.evaluate(0,1), 2)
   np.testing.assert_equal(Pt.evaluate(0,2), 4)
   np.testing.assert_equal(Pt.evaluate(1,0), 0)
+
+def test_composition():
+
+  g = Polynomial({(0,2): 1, (2,0): 1})
+
+  L = PolyLinTrans.composition(1, 2, [g])
+  P = Polynomial({(0,): 1, (1,): 2, (2,): 3})
+
+  Pt = L.transform(P)
+
+  np.testing.assert_equal(Pt.d, 4)
+  np.testing.assert_equal(Pt.data[0,0], 1)
+  np.testing.assert_equal(Pt.data[2,0], 2)
+  np.testing.assert_equal(Pt.data[0,2], 2)
+  np.testing.assert_equal(Pt.data[4,0], 3)
+  np.testing.assert_equal(Pt.data[2,2], 6)
+  np.testing.assert_equal(Pt.data[0,4], 3)
+
+
+def test_double_composition():
+
+  g1 = Polynomial({(2,0): 1})  # x**2
+  g2 = Polynomial({(0,2): 1})  # y**2
+
+  L = PolyLinTrans.composition(2, 2, [g1, g2])
+
+  P = Polynomial({(0,1): 1, (1,1): 2, (1,0): 3})   # w + 2 * z*w + 3 z
+
+  Pt = L.transform(P)   # should be y**2 + 2 * x**2 * y**2 + 3 * x**2
+
+  np.testing.assert_equal(Pt.d, 4)
+  np.testing.assert_equal(Pt.data[2,0], 3)
+  np.testing.assert_equal(Pt.data[0,2], 1)
+  np.testing.assert_equal(Pt.data[2,2], 2)
+
+
+def test_gaussian_expectation():
+
+  g = Polynomial({(0,2): 1, (2,0): 1, (1,1): 2, (1,2): 1})
+
+  L = PolyLinTrans.gaussian_expectation(n0=2, d0=3, xi=1, sigma=4)
+
+  g_t = L.transform(g)
+
+  np.testing.assert_equal(g_t.n, 1)
+
+  np.testing.assert_equal(g_t.evaluate(0), 16)
+  np.testing.assert_equal(g_t.evaluate(1), 33)

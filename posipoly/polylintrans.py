@@ -103,8 +103,23 @@ class PolyLinTrans(object):
         return PolyLinTrans.elvar(n,d,xi[0], val[0])
     p = PolyLinTrans(n,n-1)
     for idx in grlex_iter((0,)*n, d):
-      new_idx = [idx[i] for i in range(len(idx)) if i != xi]
-      p[idx][tuple(new_idx)] += val**idx[xi]
+      new_idx = tuple(idx[i] for i in range(len(idx)) if i != xi)
+      p[idx][new_idx] += val**idx[xi]
+    p.updated()
+    return p
+
+  @staticmethod
+  def gaussian_expectation(n0, d0, xi, sigma):
+    '''expectation of polynomial assuming that x[i] ~ N(0, sigma^2), 
+       in practice obtained by setting x[i]^2 = sigma^2 and x[i]^k = 0 for k != 2'''
+    p = PolyLinTrans(n0,n0-1)
+    p.d0 = d0
+    for idx in grlex_iter((0,)*n0, d0):
+      new_idx = tuple(idx[i] for i in range(len(idx)) if i != xi)
+      if idx[xi] == 2:
+        p[idx][new_idx] = sigma**2
+      if idx[xi] == 0:
+        p[idx][new_idx] = 1
     p.updated()
     return p
 
@@ -151,6 +166,43 @@ class PolyLinTrans(object):
     #   lower_trans = PolyLinTrans.elvar(n,d+1,xi,box[i][0])
     #   p = (upper_trans - lower_trans) * int_trans * p
     p.updated() # degrees become misleading here..
+    return p
+
+  @staticmethod
+  def composition(n0, d0, g_list):
+    ''' transformation representing the mapping p(x) |-> q(y) = p(g(y)) 
+        for a given polynomial p in one variable'''
+    
+    if not (n0 == len(g_list)):
+      raise Exception('composition can only be done from n0=1')
+
+    n1 = g_list[0].n
+    gd = max(g.d for g in g_list)
+
+    if not all(g.n == n1 for g in g_list):
+      raise Exception('all gs must have same number of variables')
+
+    p = PolyLinTrans(n0, n1)
+    p.d0 = d0
+    p.d1 = d0 * gd
+
+    p[(0,) * n0][(0,) * n1] = 1.   # constant term stays the same
+
+    start_iter = [0] * n0
+    start_iter[n0-1] = 1
+
+    for exp0 in grlex_iter( start_iter, d0 ):
+      
+      # product of all raised polynomials
+      exp_pol = 1.
+      for k in range(n0):
+        if exp0[k] >= 1:
+          exp_pol = (g_list[k]**exp0[k]) * exp_pol
+
+      for exp1, coef in exp_pol.data.items():
+        if abs(coef) > 1e-10:
+          p[exp0][exp1] += coef
+
     return p
 
   def transform(self, poly):

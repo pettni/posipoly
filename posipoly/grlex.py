@@ -103,7 +103,7 @@ def multi_grlex_iter(midx, groups, degrees):
       for pos_nr, pos in enumerate(group):
         ret[pos] = mons[group_nr][pos_nr]
 
-def grlex_iter(midx, deg = -2):
+def grlex_iter(midx, deg = None):
   '''
   Create an iterator that produces ordered grlex exponents, starting
   with the multiindex 'midx'. The iterator stops when the total degree 
@@ -117,6 +117,7 @@ def grlex_iter(midx, deg = -2):
 
   assert(min(midx) >= 0)
 
+
   if max(midx) == 0:
     right_ptr = 0
   else:
@@ -126,13 +127,8 @@ def grlex_iter(midx, deg = -2):
         right_ptr = i
         break
 
-  while True:
-
-    if sum(midx) == deg + 1:
-      raise StopIteration
-
+  while deg is None or sum(midx) < deg + 1:
     yield tuple(midx)
-
     if right_ptr == 0:
       midx = [0] * (len(midx) - 1) + [sum(midx) + 1]
       right_ptr = len(midx) - 1

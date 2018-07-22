@@ -80,8 +80,8 @@ def test_sdd1():
   tot_deg = 6               # overall degree of problem
   sigma_deg = tot_deg - 2   # degree of sigma
 
-  p = Polynomial.from_sympy(-x**2 - y**2 + x)
-  g = Polynomial.from_sympy(1 - x**2 - y**2)
+  p = Polynomial.from_sympy(-x**2 - y**2 + x, [x,y])
+  g = Polynomial.from_sympy(1 - x**2 - y**2, [x,y])
 
   A_gamma = PolyLinTrans.eye(1, 2, 0, tot_deg).as_Tcc()     # coefs to coefs
   A_sigma = PolyLinTrans.mul_pol(2, sigma_deg, g).as_Tcg()  # gram to coefs
@@ -111,8 +111,8 @@ def test_sdd2():
   tot_deg = 6               # overall degree of problem
   sigma_deg = tot_deg - 2   # degree of sigma
 
-  p = Polynomial.from_sympy(x**2 + y**2)
-  g = Polynomial.from_sympy(1 - x**2 - y**2)
+  p = Polynomial.from_sympy(x**2 + y**2, [x,y])
+  g = Polynomial.from_sympy(1 - x**2 - y**2, [x,y])
 
   A_gamma = PolyLinTrans.eye(1, 2, 0, tot_deg).as_Tcc()     # coefs to coefs
   A_sigma = PolyLinTrans.mul_pol(2, sigma_deg, g).as_Tcg()  # gram to coefs
@@ -141,8 +141,8 @@ def test_sdd3():
   tot_deg = 6               # overall degree of problem
   sigma_deg = tot_deg - 2   # degree of sigma
 
-  p = Polynomial.from_sympy(2+(x-0.5)**2 + y**2)
-  g = Polynomial.from_sympy(1 - x**2 - y**2)
+  p = Polynomial.from_sympy(2+(x-0.5)**2 + y**2, [x,y])
+  g = Polynomial.from_sympy(1 - x**2 - y**2, [x,y])
 
   A_gamma = PolyLinTrans.eye(1, 2, 0, tot_deg).as_Tcc()     # coefs to coefs
   A_sigma = PolyLinTrans.mul_pol(2, sigma_deg, g).as_Tcg()  # gram to coefs

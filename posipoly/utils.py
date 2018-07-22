@@ -1,4 +1,5 @@
 from math import ceil, sqrt
+from scipy.special import binom
 
 def k_to_ij(k, L):
   """ 
@@ -50,3 +51,9 @@ def mat_to_vec(mat):
     ret[k] = (mat[i,j] + mat[j,i]) / 2
 
   return ret
+
+
+def multinomial(params):
+    if len(params) == 1:
+        return 1
+    return binom(sum(params), params[-1]) * multinomial(params[:-1])
