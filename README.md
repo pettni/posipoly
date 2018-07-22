@@ -67,6 +67,12 @@ solve_ppp(c, Aeq, beq, Aiq, biq, pp_list, 'psd')   # optimize in the PSD cone
 solve_ppp(c, Aeq, beq, Aiq, biq, pp_list, 'sdd')   # same problem in the SDD cone
 ```
 
+## FIX list
+
+ - Implement probabilistic barrier certificates
+    - Currently: sometimes get constraint violations, maybe due to badly conditioned matrices
+    - Solve with shift & scale?
+
 ## TODO list
 
  - Implement class for sparsity patterns and enable sparse optimization
