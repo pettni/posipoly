@@ -102,7 +102,7 @@ PP constraints are added by specifying that segments of the variable vector repr
 solve_ppp(c, Aeq, beq, Aiq, biq, pp_list, 'psd')   # optimize in the PSD cone
 solve_ppp(c, Aeq, beq, Aiq, biq, pp_list, 'sdd')   # same problem in the SDD cone
 ```
-The matrices `Aeq` and `beq` can be obtained from `PolyLinTrans` objects by calling the `as_Tcg()` and `as_Tcc()` member methods to obtain matrix representations of the transformations from g-format to c-format, and from c-format to c-format, respectively.
+The matrices `Aeq` and `Aiq` can be construced from `PolyLinTrans` objects by calling the `as_Tcg()` and `as_Tcc()` member methods to obtain matrix representations of the transformations from g-format to c-format, and from c-format to c-format, respectively.
 
 ## Future list
 
