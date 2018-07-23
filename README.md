@@ -68,7 +68,7 @@ prob.add_var(var0, n0, d0, 'pp')
 prob.add_var(var1, n1, d1, 'coef')   
 
 ```
- 2. Add constraints represented by linear transformations of the coefficient representations via `PolyLinTrans` objects. Degrees and dimensions must add up here, i.e. if `var0` is in $n$ variables and of degree $d$, then `trans00.d0 = d, trans00.n0 = n`. Furthermore, all transformations in a row must have the same target dimension and degree.
+ 2. Add constraints represented by linear transformations of the coefficient representations via `PolyLinTrans` objects. Degrees and dimensions must add up here, i.e. if `var0` is in n variables and of degree d, then `trans00.d0 = d, trans00.n0 = n`. Furthermore, all transformations in a row must have the same target dimension and degree.
 ```
 # Add constraint trans00.var0 + trans01.var1 = b0
 prob.add_row({'var0': trans00, 'var1': trans01}, b0, 'eq')
