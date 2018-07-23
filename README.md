@@ -72,8 +72,8 @@ prob.add_var(var1, n1, d1, 'coef')
 ```
 # Add constraint trans00.var0 + trans01.var1 = b0
 prob.add_row({'var0': trans00, 'var1': trans01}, b0, 'eq')
-# Add constraint trans10.var0 + trans11.var1 <= b1
-prob.add_row({'var0': trans10, 'var1': trans11}, b1, 'iq')
+# Add constraint trans10.var0 <= b1
+prob.add_row({'var0': trans10}, b1, 'iq')
 ```
  3. Set objective
 ```
