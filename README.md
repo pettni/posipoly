@@ -102,8 +102,9 @@ solve_ppp(c, Aeq, beq, Aiq, biq, pp_list, 'sdd')   # same problem in the SDD con
 ```
 The matrices `Aeq` and `beq` can be obtained from `PolyLinTrans` objects by calling the `as_Tcg()` and `as_Tcc()` member methods to obtain matrix representations of the transformations from g-format to c-format, and from c-format to c-format, respectively.
 
-## TODO list
+## Future list
 
+ - Profile the grlex code. Potentially switch to grevlex and/or use Cython to make this part faster
  - Implement class for sparsity patterns and enable sparse optimization
  - Interface with other solvers than Mosek (or interface with a package like cvxpy)
 
