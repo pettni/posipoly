@@ -2,6 +2,8 @@
 
 Collection of methods to efficiently create optimization problems over positive polynomials using Mosek as the underlying solver.
 
+**This toolbox is in an early development phase. Use at own risk; syntax will be unstable and bugs are likely plenty.**
+
 ## Installation
 
 ```
