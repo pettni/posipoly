@@ -133,6 +133,11 @@ class PPP(object):
       if name not in self.varinfo.keys():
         raise Exception('unknown variable {}'.format())
 
+    n1_list = [Aop_dict[name].n1 for name in Aop_dict.keys()]
+    d1_list = [Aop_dict[name].d1 for name in Aop_dict.keys()]
+    if max(n1_list) != min(n1_list) or max(d1_list) != min(d1_list):
+      raise Exception('final degrees and dimensions must match')
+
     numcon_list = [Aop_dict[name].numcon for name in Aop_dict.keys()]
     if max(numcon_list) - min(numcon_list) != 0 or min(numcon_list) != len(b):
       raise Exception('operators have different number of constraints, check final degrees')
@@ -141,6 +146,8 @@ class PPP(object):
     matrices = dict()
     for varname in self.varnames:
       if varname in Aop_dict.keys():
+        if Aop_dict[varname].d0 != self.varinfo[varname][1] or Aop_dict[varname].n0 != self.varinfo[varname][0]:
+          raise Exception('operator for {} has wrong initial dimension or degree'.format(varname))
         if self.varinfo[varname][2] == 'pp':
           # pp variable
           matrices[varname] = Aop_dict[varname].as_Tcg()
