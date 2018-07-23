@@ -47,7 +47,6 @@ class Polynomial(object):
   @staticmethod
   def from_mon_coefs(n, mon_coefs):
     ''' create a polynomial in n variables from a list of coefficients (grlex ordering) '''
-
     max_deg = sum(index_to_grlex(len(mon_coefs), n))
 
     it = grlex_iter((0,) * n, max_deg)

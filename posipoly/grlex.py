@@ -27,6 +27,11 @@ def grlex_to_index(grlex):
 
 def index_to_grlex(index, n):
   """Returns the multi-index of length n for a given grlex ordering number"""
+  if n < 1:
+    raise Exception('number of variables must be positive')
+  if index < 0:
+    raise Exception('invalid index')
+
   grlex = [0 for i in range(n)]
 
   # find sum of grlex

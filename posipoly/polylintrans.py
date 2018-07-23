@@ -44,6 +44,11 @@ class PolyLinTrans(object):
     self.d1 = 0     # final degree
     self.cols = {}
 
+  @property
+  def numcon(self):
+    '''number of constraints in coef format'''
+    return count_monomials_leq(self.n1, self.d1)  
+
   @staticmethod
   def eye(n0, n1, d0, d1=None):
     '''

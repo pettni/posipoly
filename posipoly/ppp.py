@@ -6,10 +6,14 @@
 from math import sqrt
 import numpy as np
 import scipy.sparse as sp
+from collections import OrderedDict
 
 import mosek
 
 from posipoly.utils import *
+from posipoly.grlex import *
+from posipoly.polylintrans import PolyLinTrans
+from posipoly.polynomial import Polynomial
 
 def sdd_index(i,j,n):
   """ An n x n sdd matrix A can be written as A = sum Mij.
@@ -21,6 +25,247 @@ def sdd_index(i,j,n):
   else:
     return [[ij_to_k(min(i,j), max(i,j)-1, num_vars),2]]
 
+
+class PPP(object):
+  """Positive Polynomial Program"""
+  def __init__(self, varinfo=dict()):
+
+    if any(value[2] not in ['pp', 'coef'] for value in varinfo.values()):
+      raise Exception('type must be "pp" or "coef"')
+
+    self.varinfo = OrderedDict(varinfo)
+    self.Aeq = sp.coo_matrix((0, self.numvar))
+    self.beq = np.zeros(0)
+
+    self.Aiq = sp.coo_matrix((0, self.numvar))
+    self.biq = np.zeros(0)
+
+    self.c = np.zeros(self.numvar)
+
+    self.sol = None
+
+  @property
+  def varnames(self):
+    '''get names of all variables'''
+    return list(self.varinfo.keys())
+
+  @property
+  def varsizes(self):
+    '''get coefficient sizes of all polynomial variables'''
+    return [self.varsize(name) for name in self.varinfo.keys()]
+
+  @property
+  def numvar(self):
+    '''total number of coefficient variables'''
+    return sum(self.varsizes)
+
+  @property
+  def numcon(self):
+    '''total number of constraints'''
+    return self.Aeq.shape[0] + self.Aiq.shape[0]
+  
+  def varsize(self, varname):
+    '''get size of variable "varname"'''
+    if varname not in self.varinfo.keys():
+      raise Exception('unknown variable {}'.format(varname))
+
+    n = self.varinfo[varname][0]
+    d = self.varinfo[varname][1]
+
+    if self.varinfo[varname][2] == 'pp':
+      num_mon = count_monomials_leq(n, int(ceil(float(d)/2)))
+      return num_mon*(num_mon+1)//2
+
+    if self.varinfo[varname][2] == 'coef':
+      return count_monomials_leq(n, d)
+
+  def varpos(self, varname):
+    '''return starting position of variable'''
+    if varname not in self.varinfo.keys():
+      raise Exception('unknown variable {}'.format(varname))
+
+    ret = 0
+    for name in self.varnames:
+      if name == varname:
+        break
+      ret += self.varsize(name)
+    return ret
+
+  def add_var(self, name, n, deg, tp):
+    
+    if name in self.varinfo.keys():
+      raise Exception('varname {} already present'.format(name))
+
+    self.varinfo[name] = (n, deg, tp)
+    self.Aeq = sp.bmat([[self.Aeq, sp.coo_matrix((self.numcon, self.varsize(name)))]])
+    self.Aiq = sp.bmat([[self.Aiq, sp.coo_matrix((self.numcon, self.varsize(name)))]])
+
+  def add_row(self, Aop_dict, b, tp):
+    ''' 
+    add a constraint to problem of form
+    T1 var1 + T2 var2 <= b   tp='iq'
+    T1 var1 + T2 var2 = b    tp='eq'
+
+
+    Parameters
+    ----------
+    Aop_dict : dict
+        dict with values PolyLinTrans. 
+        Variables that are not present as keys are assumed 
+        to have the zero operator.
+    b : array_like
+        Right-Hand side of constraint
+    tp : {'eq', 'iq'}
+        Type of constraint ('eq'uality or 'in'equality).
+  
+    Example
+    ----------
+    >>> prob = PPP({'x': (2, 2, 'gram'), 'y': (3, 3, 'gram')})
+    >>> T = PolyLinTrans.eye(2,2,2)
+    >>> b = np.zeros(T.numcon)
+    >>> prob.add_row({'x': T}, b, 'eq')
+    '''
+
+    if tp not in ['eq', 'iq']:
+      raise Exception('tp must be "eq" or "iq"')
+
+    for name in Aop_dict.keys():
+      if name not in self.varinfo.keys():
+        raise Exception('unknown variable {}'.format())
+
+    numcon_list = [Aop_dict[name].numcon for name in Aop_dict.keys()]
+    if max(numcon_list) - min(numcon_list) != 0 or min(numcon_list) != len(b):
+      raise Exception('operators have different number of constraints, check final degrees')
+    numcon = numcon_list[0]
+
+    matrices = dict()
+    for varname in self.varnames:
+      if varname in Aop_dict.keys():
+        if self.varinfo[varname][2] == 'pp':
+          # pp variable
+          matrices[varname] = Aop_dict[varname].as_Tcg()
+        else:
+          # coefficient variable
+          matrices[varname] = Aop_dict[varname].as_Tcc()
+
+        # check varsize
+        if not matrices[varname].shape[1] == self.varsize(varname):
+          raise Exception('transformation for {} is wrong size, check initial degree'.format(varname))
+      else:
+        # add zero matrix
+        matrices[varname] = sp.coo_matrix((numcon, self.varsize(varname)))
+
+    newrow = sp.bmat([[matrices[name] for name in self.varnames]])
+
+    if tp == 'eq':
+      self.Aeq = sp.bmat([[self.Aeq], [newrow]])
+      self.beq = np.hstack([self.beq, b])
+    else:
+      self.Aiq = sp.bmat([[self.Aiq], [newrow]])
+      self.biq = np.hstack([self.biq, b])
+
+  def set_objective(self, c_dict):
+    ''' 
+    add objective to problem 
+
+    Parameters
+    ----------
+    c_dict : dict
+        dict with values PolyLinTrans or array_like scalars. 
+        Variables that are not present as keys are assumed 
+        to have the zero cost.
+  
+    Example
+    ----------
+    >>> T = PolyLinTrans.integrate(n,d,dims,boxes)  # results in scalar
+    >>> prob.add_row({'a': [0,1 ], 'b': T} )
+    '''
+
+    if not type(c_dict) is dict:
+      raise Exception('c_dict must be dict')
+
+    vectors = dict()
+    for varname in self.varnames:
+      if varname in c_dict:
+        if type(c_dict[varname]) is PolyLinTrans:
+          if self.varinfo[varname][2] == 'pp':
+            vectors[varname] = c_dict[varname].as_Tcg().todense().unravel()
+          else:
+            vectors[varname] = c_dict[varname].as_Tcm().todense().unravel()
+        else:
+          #  array_like
+          vectors[varname] = c_dict[varname]
+      else:
+        # zero cost
+        vectors[varname] = np.zeros(self.varsize(varname))
+
+    self.c = np.hstack([vectors[varname] for varname in self.varnames])
+
+  def solve(self, pp_cone):
+    ''' 
+    solve Positive Polynomial Program 
+
+    Parameters
+    ----------
+    pp_cone : {'psd', 'sdd'}
+        cone for positivity constraints
+  
+    Returns
+    ----------
+    sol : solution vector
+    sta : status
+    '''
+
+    pp_list = [[self.varpos(varname), self.varsize(varname)] for varname in self.varnames 
+               if self.varinfo[varname][2] == 'pp']
+
+    sol, sta = solve_ppp(self.c, self.Aeq, self.beq, self.Aiq, self.biq, pp_list, pp_cone)
+
+    self.sol = sol
+ 
+    if sol is not None:
+      self.check_sol(self.sol)
+
+    return sol, sta
+
+  def check_sol(self, sol, tol=1e-6):
+    '''
+    check solution against tolerance to see if constraints are met,
+    prints warnings messages if violations above tol are found
+    '''
+    if self.Aiq.shape[0] > 0 and min(self.biq - self.Aiq.dot(sol)) < -tol:
+        print('warning, iq constraint violated by {:f}'.format(abs(min(self.biq - self.Aiq.dot(sol)))))
+        
+    if self.Aeq.shape[0] > 0 and max(np.abs(self.Aeq.dot(sol)-self.beq)) > tol:
+        print('warning, eq constraint violated by {:f}'.format(max(np.abs(self.Aeq.dot(sol)-self.beq))) )
+
+    for varname in self.varnames:
+      if self.varinfo[varname][2] == 'pp':
+        a = self.varpos(varname)
+        b = a + self.varsize(varname)
+        mat = vec_to_mat(sol[a:b])
+        v, _ = np.linalg.eig(mat)
+        if min(v) < -tol:
+            print('warning, pp constraint violated by {:f}'.format(abs(min(v))))
+
+  def get_poly(self, varname):
+    '''return a Polynomial object from solution'''
+    if self.sol is None:
+      raise Exception('no solution stored')
+    if varname not in self.varnames:
+      raise Exception('unknown variable {}'.format())
+
+    a = self.varpos(varname)
+    b = a + self.varsize(varname)
+    n = self.varinfo[varname][0]
+    d = self.varinfo[varname][1]
+
+    if self.varinfo[varname][2] == 'coef':
+      mon_coefs = self.sol[a:b]
+    else:
+      mon_coefs = PolyLinTrans.eye(n, n, d, d).as_Tcg().dot(self.sol[a,b])
+
+    return Polynomial.from_mon_coefs(n, mon_coefs)
 
 def setup_ppp(c, Aeq, beq, Aiq, biq, ppp_list, pp_cone):
   '''set up a positive polynomial programming problem
