@@ -80,9 +80,9 @@ prob.add_row({'var0': trans10}, b1, 'iq')
 # Set objective to min c' var0
 prob.set_objective({'var0': c})
 ```
- 4. Solve the problem
+ 4. Optimize while imposing cone constraints on all `pp`-type variables 
 ```
-sol, sta = prob.solve()
+sol, sta = prob.solve('psd')  # or 'sdd'
 ```
 
 ### Define and solve a PPP problem manually
