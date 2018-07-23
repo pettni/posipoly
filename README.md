@@ -21,7 +21,7 @@ Look at an example in `examples/` to see how to do optimization.
 
 ## Features
 
- - Efficient representation of linear polynomial transformations via the PolyLinTrans class.
+ - Efficient representation of linear polynomial transformations via the PolyLinTrans class. As opposed to [SOSTOOLS](http://www.cds.caltech.edu/sostools/) a symbolic engine is not used when setting up a problem. Instead constraints are defined directly with linear operators represented in parsimonious sparse form which avoid computational overhead (magnitude of effect is TBD).
  - Unified interface for setting up and solving positive polynomial programming (ppp) problems. Currently supports optimization in the PSD (for SOS) and SDD (for SDSOS) cones.
 
 ## Math background and code overview
