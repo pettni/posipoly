@@ -2,6 +2,7 @@ import numpy as np
 import scipy.sparse as sp
 from math import sqrt, ceil
 from collections import OrderedDict
+import time
 
 import mosek
 
@@ -358,7 +359,12 @@ def solve_ppp(c, Aeq, beq, Aiq, biq, ppp_list, pp_cone='sdp'):
 
   task = setup_ppp(c, Aeq, beq, Aiq, biq, ppp_list, pp_cone)
 
+  print('optimizing...')
+  t_start = time.clock()
+
   task.optimize()
+
+  print("solved in {:.2f}s".format(time.clock() - t_start))
 
   solsta = task.getsolsta(mosek.soltype.itr)
 
