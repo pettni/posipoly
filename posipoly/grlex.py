@@ -1,5 +1,3 @@
-'''utilities for grlex ordering'''
-
 from math import sqrt, ceil
 from scipy.misc import comb
 
@@ -12,7 +10,7 @@ def count_monomials_eq(n, d):
   return int(comb(n+d-1, d))
 
 def grlex_to_index(grlex):
-  """Returns the grlex ordering number for a given multi-index. Can be expensive for large degrees"""
+  '''Returns the grlex ordering number for a given multi-index. Can be expensive for large degrees'''
   total_degree = sum(grlex)
   n = len(grlex)
 
@@ -25,7 +23,7 @@ def grlex_to_index(grlex):
   return index
 
 def index_to_grlex(index, n):
-  """Returns the multi-index of length n for a given grlex ordering number"""
+  '''Returns the multi-index of length n for a given grlex ordering number'''
   if n < 1:
     raise Exception('number of variables must be positive')
   if index < 0:
@@ -122,7 +120,6 @@ def grlex_iter(midx, deg = None):
 
   midx = list(midx)
   assert(min(midx) >= 0)
-
 
   if max(midx) == 0:
     right_ptr = 0

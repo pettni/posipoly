@@ -198,11 +198,12 @@ class PPP(object):
             vectors[varname] = c_dict[varname].Acc.todense().getA1()
         else:
           #  array_like
-
           vectors[varname] = c_dict[varname]
       else:
         # zero cost
         vectors[varname] = np.zeros(self.varsize(varname))
+      if not len(vectors[varname]) == self.varsize(varname):
+        raise Exception('weight for {} has wrong size'.format(varname))
     self.c = np.hstack([vectors[varname] for varname in self.varnames])
 
   def solve(self, pp_cone):
