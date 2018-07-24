@@ -1,4 +1,6 @@
-from posipoly.polynomial import *
+import numpy as np
+
+from posipoly import *
 
 def test_evaluate():
 

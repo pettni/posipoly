@@ -21,7 +21,7 @@ Look at an example in `examples/` to see how to do optimization.
 
 ## Features
 
- - Efficient representation of linear polynomial transformations via the PolyLinTrans class. As opposed to [SOSTOOLS](http://www.cds.caltech.edu/sostools/) a symbolic engine is not used when setting up a problem. Instead constraints are defined directly with linear operators represented in parsimonious sparse form which avoid computational overhead (magnitude of effect is TBD).
+ - Efficient representation of linear polynomial transformations via the PTrans class. As opposed to [SOSTOOLS](http://www.cds.caltech.edu/sostools/) a symbolic engine is not used when setting up a problem. Instead constraints are defined directly with linear operators represented in parsimonious sparse form which avoid computational overhead (magnitude of effect is TBD).
  - Unified interface for setting up and solving positive polynomial programming (ppp) problems. Currently supports optimization in the PSD (for SOS) and SDD (for SDSOS) cones.
 
 ## Math background and code overview
@@ -37,21 +37,21 @@ C = [C11 C12 ... C1n
 ```
 the vector representation is
 ```
-vec(C) = [C11 C12 ... C1n C22 ... C2n ... Cnn] 
+mat_to_vec(C) = [C11 C12 ... C1n C22 ... C2n ... Cnn] 
 ```
 of length n(n+1)/2. We call this a **g-format** representation
 .
 
 ### Retrieve constraints in coefficient form
 
-A linear polynomial transformation is a mapping between polynomial rings such that the transformed coefficients are linear in the original coefficients. Examples include the identity transform (possibly between different dimensions and degrees), differentiation, multiplication with a given polynomial, etc. Many such transformations are implemented in `PolyLinTrans` as static member methods. Furthermore, methods to provide sparse (`scipy.sparse.coo_matrix`) transformation matrices of two types are available: gram to coefficient, and coefficient to coefficient.
+A linear polynomial transformation is a mapping between polynomial rings such that the transformed coefficients are linear in the original coefficients. Examples include the identity transform (possibly between different dimensions and degrees), differentiation, multiplication with a given polynomial, etc. Many such transformations are implemented in `PTrans` as static member methods. Furthermore, methods to provide sparse (`scipy.sparse.coo_matrix`) transformation matrices of two types are available: gram to coefficient, and coefficient to coefficient.
 ```
-trans = PolyLinTrans.eye(2,2,2,2)
+trans = PTrans.eye(2,2)
 
-# get T such that for a gram polynomial Z(x)' * S * Z(x), transformed polynomial is (T * vec(S))' * Z(x)
-T = trans.as_Tcg()  # g-format to c-format
-# get T such that for a coefficient polynomial c' * Z(x), transformed polynomial is (T * c)' * Z(x)
-T = trans.as_Tcc()  # c-format to c-format
+# get A such that for a gram polynomial Z(x)' * S * Z(x), transformed polynomial is (A * vec(S))' * Z(x)
+A = trans.Acg  # g-format to c-format
+# get A such that for a coefficient polynomial c' * Z(x), transformed polynomial is (A * c)' * Z(x)
+A = trans.Acc  # c-format to c-format
 ```
 
 ### Define and solve a PPP problem via the `PPP` class
@@ -70,12 +70,12 @@ prob.add_var(var0, n0, d0, 'pp')
 prob.add_var(var1, n1, d1, 'coef')   
 
 ```
- 2. Add constraints represented by linear transformations of the coefficient representations via `PolyLinTrans` objects. Degrees and dimensions must add up here, i.e. if `var0` is in n variables and of degree d, then `trans00.d0 = d, trans00.n0 = n`. Furthermore, all transformations in a row must have the same target dimension and degree.
+ 2. Add constraints represented by linear transformations of the coefficient representations via `PTrans` objects. Degrees and dimensions must add up here, i.e. if `var0` is in n variables and of degree d, then `T00.d0 = d, T00.n0 = n`. Furthermore, all transformations in a row must have the same target dimension and degree.
 ```
-# Add constraint trans00.var0 + trans01.var1 = b0
-prob.add_row({'var0': trans00, 'var1': trans01}, b0, 'eq')
-# Add constraint trans10.var0 <= b1
-prob.add_row({'var0': trans10}, b1, 'iq')
+# Add constraint T00.var0 + T01.var1 = b0
+prob.add_row({'var0': T00, 'var1': T01}, b0, 'eq')
+# Add constraint T10.var0 <= b1
+prob.add_row({'var0': T10}, b1, 'iq')
 ```
  3. Set objective
 ```
@@ -89,7 +89,7 @@ sol, sta = prob.solve('psd')  # or 'sdd'
 
 ### Define and solve a PPP problem manually
 
-The `solve_ppp` function imposes positivity constraints on gram matrices that are represented in vector form. Let `mat` be the inverse transformation, i.e. `mat(vec(C)) = C`. 
+The `solve_ppp` function imposes positivity constraints on gram matrices that are represented in vector form. Let `vec_to_mat` be the inverse transformation, i.e. `vec_to_mat(mat_to_vec(C)) = C`. These two functions are available in `posipoly.utils`
 
 PP constraints are added by specifying that segments of the variable vector represent such matrices. 
 
@@ -102,7 +102,7 @@ PP constraints are added by specifying that segments of the variable vector repr
 solve_ppp(c, Aeq, beq, Aiq, biq, pp_list, 'psd')   # optimize in the PSD cone
 solve_ppp(c, Aeq, beq, Aiq, biq, pp_list, 'sdd')   # same problem in the SDD cone
 ```
-The matrices `Aeq` and `beq` can be obtained from `PolyLinTrans` objects by calling the `as_Tcg()` and `as_Tcc()` member methods to obtain matrix representations of the transformations from g-format to c-format, and from c-format to c-format, respectively.
+The matrices `Aeq` and `beq` can be obtained from `PTrans` objects via the `Acg` and `Acc` properties to obtain matrix representations of the transformations from g-format to c-format, and from c-format to c-format, respectively.
 
 ## Future list
 

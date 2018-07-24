@@ -1,13 +1,9 @@
 import sympy
 from sympy.abc import x, y
 import numpy as np
-import scipy.sparse as sp
 
-import mosek
-from posipoly.polynomial import Polynomial
-from posipoly.polylintrans import PolyLinTrans
+from posipoly import *
 from posipoly.ppp import *
-from posipoly.utils import *
 
 def test_is_dd():
   np.testing.assert_equal(is_dd(np.array([[1, 0],[0, 1]] )), True)
@@ -79,91 +75,75 @@ def test_sdd1():
 
   tot_deg = 6               # overall degree of problem
   sigma_deg = tot_deg - 2   # degree of sigma
+  n = 2
 
   p = Polynomial.from_sympy(-x**2 - y**2 + x, [x,y])
   g = Polynomial.from_sympy(1 - x**2 - y**2, [x,y])
 
-  A_gamma = PolyLinTrans.eye(1, 2, 0, tot_deg).as_Tcc()     # coefs to coefs
-  A_sigma = PolyLinTrans.mul_pol(2, sigma_deg, g).as_Tcg()  # gram to coefs
-  A_S1 = PolyLinTrans.eye(2, 2, tot_deg).as_Tcg()           # gram to coefs
+  prob = PPP({'gamma': (1, 0, 'coef'),
+              'sigma': (2, sigma_deg, 'pp'),
+              'pos': (2, tot_deg, 'pp')})
+  prob.add_row({'gamma': PTrans.eye(1, 0, n, tot_deg),
+                'sigma': PTrans.mul_pol(n, sigma_deg, g),
+                'pos': PTrans.eye(n, tot_deg)}, 
+               p, 'eq')
+  prob.set_objective({'gamma': [-1]})
 
-  n_gamma = A_gamma.shape[1]
-  n_sigma = A_sigma.shape[1]
-  n_S1 = A_S1.shape[1]
+  sol, _ = prob.solve('sdd')
+  np.testing.assert_almost_equal(sol[0], -2.)
 
-  Aeq = sp.bmat([[A_gamma, A_sigma, A_S1]])
-  beq = p.mon_coefs(tot_deg)
-
-  c = np.zeros(Aeq.shape[1])
-  c[0] = -1
-
-  ppp_list = [ [n_gamma, n_sigma], [n_gamma+n_sigma, n_S1] ]
-
-  sol, _ = solve_ppp(c, Aeq, beq, None, None, ppp_list, 'sdd')
-  np.testing.assert_almost_equal(sol[0], -2)
-
-  sol, _ = solve_ppp(c, Aeq, beq, None, None, ppp_list, 'psd')
-  np.testing.assert_almost_equal(sol[0], -2)
+  sol, _ = prob.solve('psd')
+  np.testing.assert_almost_equal(sol[0], -2.)
 
 
 def test_sdd2():
 
   tot_deg = 6               # overall degree of problem
   sigma_deg = tot_deg - 2   # degree of sigma
+  n = 2
 
   p = Polynomial.from_sympy(x**2 + y**2, [x,y])
   g = Polynomial.from_sympy(1 - x**2 - y**2, [x,y])
 
-  A_gamma = PolyLinTrans.eye(1, 2, 0, tot_deg).as_Tcc()     # coefs to coefs
-  A_sigma = PolyLinTrans.mul_pol(2, sigma_deg, g).as_Tcg()  # gram to coefs
-  A_S1 = PolyLinTrans.eye(2, 2, tot_deg).as_Tcg()           # gram to coefs
+  prob = PPP({'gamma': (1, 0, 'coef'),
+              'sigma': (2, sigma_deg, 'pp'),
+              'pos': (2, tot_deg, 'pp')})
+  prob.add_row({'gamma': PTrans.eye(1, 0, n, tot_deg),
+                'sigma': PTrans.mul_pol(n, sigma_deg, g),
+                'pos': PTrans.eye(n, tot_deg)}, 
+               p, 'eq')
+  prob.set_objective({'gamma': [-1]})
 
-  n_gamma = A_gamma.shape[1]
-  n_sigma = A_sigma.shape[1]
-  n_S1 = A_S1.shape[1]
-
-  Aeq = sp.bmat([[A_gamma, A_sigma, A_S1]])
-  beq = p.mon_coefs(tot_deg)
-
-  c = np.zeros(Aeq.shape[1])
-  c[0] = -1
-
-  ppp_list = [ [n_gamma, n_sigma], [n_gamma+n_sigma, n_S1] ]
-
-  sol, _ = solve_ppp(c, Aeq, beq, None, None, ppp_list, 'sdd')
+  sol, _ = prob.solve('sdd')
   np.testing.assert_almost_equal(sol[0], 0.)
 
-  sol, _ = solve_ppp(c, Aeq, beq, None, None, ppp_list, 'psd')
+  sol, _ = prob.solve('psd')
   np.testing.assert_almost_equal(sol[0], 0.)
+
+
 
 def test_sdd3():
 
   tot_deg = 6               # overall degree of problem
   sigma_deg = tot_deg - 2   # degree of sigma
+  n = 2
 
   p = Polynomial.from_sympy(2+(x-0.5)**2 + y**2, [x,y])
   g = Polynomial.from_sympy(1 - x**2 - y**2, [x,y])
 
-  A_gamma = PolyLinTrans.eye(1, 2, 0, tot_deg).as_Tcc()     # coefs to coefs
-  A_sigma = PolyLinTrans.mul_pol(2, sigma_deg, g).as_Tcg()  # gram to coefs
-  A_S1 = PolyLinTrans.eye(2, 2, tot_deg).as_Tcg()           # gram to coefs
+  prob = PPP({'gamma': (1, 0, 'coef'),
+              'sigma': (2, sigma_deg, 'pp'),
+              'pos': (2, tot_deg, 'pp')})
+  prob.add_row({'gamma': PTrans.eye(1, 0, n, tot_deg),
+                'sigma': PTrans.mul_pol(n, sigma_deg, g),
+                'pos': PTrans.eye(n, tot_deg)}, 
+               p, 'eq')
+  prob.set_objective({'gamma': [-1]})
 
-  n_gamma = A_gamma.shape[1]
-  n_sigma = A_sigma.shape[1]
-  n_S1 = A_S1.shape[1]
-
-  Aeq = sp.bmat([[A_gamma, A_sigma, A_S1]])
-  beq = p.mon_coefs(tot_deg)
-
-  c = np.zeros(Aeq.shape[1])
-  c[0] = -1
-
-  ppp_list = [ [n_gamma, n_sigma], [n_gamma+n_sigma, n_S1] ]
-
-  sol, _ = solve_ppp(c, Aeq, beq, None, None, ppp_list, 'sdd')
+  sol, _ = prob.solve('sdd')
   np.testing.assert_almost_equal(sol[0], 2.)
 
-  sol, _ = solve_ppp(c, Aeq, beq, None, None, ppp_list, 'psd')
+  sol, _ = prob.solve('psd')
   np.testing.assert_almost_equal(sol[0], 2.)
 
 

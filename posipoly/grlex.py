@@ -1,7 +1,6 @@
 '''utilities for grlex ordering'''
 
 from math import sqrt, ceil
-import scipy.sparse
 from scipy.misc import comb
 
 def count_monomials_leq(n, d):
@@ -118,8 +117,10 @@ def grlex_iter(midx, deg = None):
     (0,2) (1,2) (2,0) (0,3) (1,2) (2,1) (3,0) ...
   '''
 
-  midx = list(midx)
+  if len(midx) == 0:
+    return  # nothing to do here
 
+  midx = list(midx)
   assert(min(midx) >= 0)
 
 
@@ -152,7 +153,7 @@ def vec_to_grlex(L, dim):
 
   Example: [ a b c ] represents the matrix [ a b ; b c], and the corresponding 1d
   polynomial is a + 2b x + c x^2. Thus the mapping can be represented as
-  ( 1., 2., 1. ), [ (0.), (1.), (2.) ]
+  ( 1., 2., 1. ), [ (0,), (1,), (2,) ]
   '''
   n = (sqrt(1 + 8 * L) - 1)/2  # side of matrix
 
@@ -185,35 +186,3 @@ def vec_to_grlex(L, dim):
       j_mon = next(j_moniter)
       j += 1
   return coef, exp
-
-def vec_to_sparse_matrix(L, dim):
-  '''
-  Sparse matrix representation of the mapping
-    vec(A) |--> c,
-  such that x_1^T A x_1 = c^T x_2,
-  using grlex ordering both for both x_1 and x_2
-  '''
-
-  # Obtain coef - exp representation of mapping
-  coef, exp = vec_to_grlex(L, dim)
-
-  # sort coef and row indices simultaneously w.r.t grlex ordering
-  sorted_ks = zip(coef, range(L))
-  sorted_ks = sorted(sorted_ks, key = lambda cL: grlex_key( exp[cL[1]] ))
-
-  # go through to add cols
-  mon_iter = grlex_iter( (0,) * dim )
-
-  cols = [  ]
-  current_mon = next(mon_iter)
-  current_idx = 0
-  for vi,ki in sorted_ks:
-    while current_mon != exp[ki]:
-      current_mon = next(mon_iter)
-      current_idx += 1
-    cols += [current_idx]
-
-  # unwrap coef, row
-  coef, row = zip(*sorted_ks)
-
-  return scipy.sparse.coo_matrix( (coef, (cols, row) ) )

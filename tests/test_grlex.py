@@ -1,10 +1,5 @@
 import numpy as np
-import sympy as sp
 import itertools
-
-from sympy.polys.monomials import itermonomials
-from sympy.polys.orderings import monomial_key
-from sympy.abc import x, y, z
 
 from posipoly.grlex import *
 
@@ -81,42 +76,3 @@ def test_vec_to_grlex3():
   np.testing.assert_equal(exp, [tuple([i+j]) for j in range(7) for i in range(j,7)])
   np.testing.assert_equal(coef, [1 if i==j else 2 for j in range(7) for i in range(j,7)])
 
-
-def test_vec_to_sparse_matrix1():
-  poly_vec = [1,2,3,4,5,6,7,8,9,10]
-
-  # represents 4 x 4 matrix :
-  poly_mat = np.array([
-        [1, 2, 3, 4],
-              [2, 5, 6, 7],
-              [3, 6, 8, 9],
-              [4, 7, 9, 10]])
-
-  trans = vec_to_sparse_matrix(10,2)
-
-  mon_vec = trans.dot(np.array(poly_vec))
-
-  mon1 = sorted(itermonomials([x, y], 4), key=monomial_key('grlex', [x, y]))[0:4]
-  mon2 = sorted(itermonomials([x, y], 4), key=monomial_key('grlex', [x, y]))[0:len(mon_vec)]
-
-  np.testing.assert_equal( sp.simplify(np.dot(mon_vec, mon2) - np.dot(np.dot( poly_mat, mon1 ), mon1 )), sp.numbers.Zero )
-
-def test_vec_to_sparse_matrix2():
-  poly_vec = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
-
-  # represents 4 x 4 matrix :
-  poly_mat = np.array([
-        [1, 2, 3, 4, 5],
-              [2, 6, 7, 8, 9],
-              [3, 7, 10, 11, 12],
-              [4, 8, 11, 13, 14],
-              [5, 9, 12, 14, 15]])
-
-  trans = vec_to_sparse_matrix(15,3)
-
-  mon_vec = trans.dot(np.array(poly_vec))
-
-  mon1 = sorted(itermonomials([x, y, z], 4), key=monomial_key('grlex', [x, y, z]))[0:5]
-  mon2 = sorted(itermonomials([x, y, z], 4), key=monomial_key('grlex', [x, y, z]))[0:len(mon_vec)]
-
-  np.testing.assert_equal( sp.simplify(np.dot(mon_vec, mon2) - np.dot(np.dot( poly_mat, mon1 ), mon1 )), sp.numbers.Zero )

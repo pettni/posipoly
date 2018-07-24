@@ -1,19 +1,14 @@
-""" 
-  Collection of methods that are useful for dealing with optimization 
-  over (scaled) diagonally dominant sums of squares polynomials.
-"""
-
-from math import sqrt
 import numpy as np
 import scipy.sparse as sp
+from math import sqrt, ceil
 from collections import OrderedDict
 
 import mosek
 
-from posipoly.utils import *
-from posipoly.grlex import *
-from posipoly.polylintrans import PolyLinTrans
-from posipoly.polynomial import Polynomial
+from .utils import mat_to_vec, vec_to_mat, ij_to_k, k_to_ij
+from .grlex import count_monomials_leq
+from .ptrans import PTrans
+from .polynomial import Polynomial
 
 def sdd_index(i,j,n):
   """ An n x n sdd matrix A can be written as A = sum Mij.
@@ -110,10 +105,10 @@ class PPP(object):
     Parameters
     ----------
     Aop_dict : dict
-        dict with values PolyLinTrans. 
+        dict with values PTrans. 
         Variables that are not present as keys are assumed 
         to have the zero operator.
-    b : array_like
+    b : Polynomial
         Right-Hand side of constraint
     tp : {'eq', 'iq'}
         Type of constraint ('eq'uality or 'in'equality).
@@ -121,13 +116,16 @@ class PPP(object):
     Example
     ----------
     >>> prob = PPP({'x': (2, 2, 'gram'), 'y': (3, 3, 'gram')})
-    >>> T = PolyLinTrans.eye(2,2,2)
-    >>> b = np.zeros(T.numcon)
+    >>> T = PTrans.eye(2,2)
+    >>> b = Polynomial({(1,2): 1})  # x * y**2
     >>> prob.add_row({'x': T}, b, 'eq')
     '''
 
     if tp not in ['eq', 'iq']:
       raise Exception('tp must be "eq" or "iq"')
+
+    if tp == 'iq' and b.d > 0:
+      print('Warning: adding coefficient-wise inequality constraint. make sure this is what you want')
 
     for name in Aop_dict.keys():
       if name not in self.varinfo.keys():
@@ -138,10 +136,10 @@ class PPP(object):
     if max(n1_list) != min(n1_list) or max(d1_list) != min(d1_list):
       raise Exception('final degrees and dimensions must match')
 
-    numcon_list = [Aop_dict[name].numcon for name in Aop_dict.keys()]
-    if max(numcon_list) - min(numcon_list) != 0 or min(numcon_list) != len(b):
-      raise Exception('operators have different number of constraints, check final degrees')
-    numcon = numcon_list[0]
+    if n1_list[0] != b.n or d1_list[0] < b.d:
+      raise Exception('must have b.n = Aop.n1 and b.d <= Aop.d1 for all Aop')
+
+    numcon = count_monomials_leq(n1_list[0], d1_list[0])
 
     matrices = dict()
     for varname in self.varnames:
@@ -150,10 +148,10 @@ class PPP(object):
           raise Exception('operator for {} has wrong initial dimension or degree'.format(varname))
         if self.varinfo[varname][2] == 'pp':
           # pp variable
-          matrices[varname] = Aop_dict[varname].as_Tcg()
+          matrices[varname] = Aop_dict[varname].Acg
         else:
           # coefficient variable
-          matrices[varname] = Aop_dict[varname].as_Tcc()
+          matrices[varname] = Aop_dict[varname].Acc
 
         # check varsize
         if not matrices[varname].shape[1] == self.varsize(varname):
@@ -166,10 +164,10 @@ class PPP(object):
 
     if tp == 'eq':
       self.Aeq = sp.bmat([[self.Aeq], [newrow]])
-      self.beq = np.hstack([self.beq, b])
+      self.beq = np.hstack([self.beq, b.mon_coefs(d1_list[0])])
     else:
       self.Aiq = sp.bmat([[self.Aiq], [newrow]])
-      self.biq = np.hstack([self.biq, b])
+      self.biq = np.hstack([self.biq, b.mon_coefs(d1_list[0])])
 
   def set_objective(self, c_dict):
     ''' 
@@ -178,13 +176,12 @@ class PPP(object):
     Parameters
     ----------
     c_dict : dict
-        dict with values PolyLinTrans or array_like scalars. 
-        Variables that are not present as keys are assumed 
-        to have the zero cost.
-  
+        keys: varnames
+        values: PTrans with final degree 0 (scalar) or array_like
+
     Example
     ----------
-    >>> T = PolyLinTrans.integrate(n,d,dims,boxes)  # results in scalar
+    >>> T = PTrans.integrate(n,d,dims,boxes)  # results in scalar
     >>> prob.add_row({'a': [0,1 ], 'b': T} )
     '''
 
@@ -194,18 +191,18 @@ class PPP(object):
     vectors = dict()
     for varname in self.varnames:
       if varname in c_dict:
-        if type(c_dict[varname]) is PolyLinTrans:
+        if type(c_dict[varname]) is PTrans:
           if self.varinfo[varname][2] == 'pp':
-            vectors[varname] = c_dict[varname].as_Tcg().todense().unravel()
+            vectors[varname] = c_dict[varname].Acg.todense().getA1()
           else:
-            vectors[varname] = c_dict[varname].as_Tcm().todense().unravel()
+            vectors[varname] = c_dict[varname].Acc.todense().getA1()
         else:
           #  array_like
+
           vectors[varname] = c_dict[varname]
       else:
         # zero cost
         vectors[varname] = np.zeros(self.varsize(varname))
-
     self.c = np.hstack([vectors[varname] for varname in self.varnames])
 
   def solve(self, pp_cone):
@@ -270,7 +267,7 @@ class PPP(object):
     if self.varinfo[varname][2] == 'coef':
       mon_coefs = self.sol[a:b]
     else:
-      mon_coefs = PolyLinTrans.eye(n, n, d, d).as_Tcg().dot(self.sol[a,b])
+      mon_coefs = PTrans.eye(n, d).Acg.dot(self.sol[a,b])
 
     return Polynomial.from_mon_coefs(n, mon_coefs)
 

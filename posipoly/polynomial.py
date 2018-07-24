@@ -1,9 +1,8 @@
 import numpy as np
-import sympy
 import copy
 
-from posipoly.grlex import *
-from posipoly.utils import multinomial
+from .grlex import index_to_grlex, grlex_iter
+from .utils import multinomial
 
 DTYPE_COEF = np.float32
 
@@ -25,10 +24,10 @@ class Polynomial(object):
   def check(self):
     for exp, coef in self.data:
       if len(exp) != self.n:
-        raise Error('invalid polynomial, exponent vectors must be of same length')
+        raise Exception('invalid polynomial, exponent vectors must be of same length')
 
       if min(exp) <= 0:
-        raise Error('all exponents must be positive') 
+        raise Exception('all exponents must be positive') 
 
   @property
   def d(self):
@@ -41,7 +40,18 @@ class Polynomial(object):
     return 0
 
   @staticmethod
+  def zero(n):
+    '''n variable polynomial p(x1, ..., xn) = 0'''
+    return Polynomial({(0,) * n: 0})
+
+  @staticmethod
+  def one(n):
+    '''n variable polynomial p(x1, ..., xn) = 1'''
+    return Polynomial({(0,) * n: 1})
+
+  @staticmethod
   def from_sympy(poly, vars):
+    import sympy
     return Polynomial( dict( sympy.polys.Poly(poly, *vars).terms()) )
 
   @staticmethod
@@ -109,7 +119,7 @@ class Polynomial(object):
   def evaluate(self, *args):
     '''evaluate polynomial at given point'''
     if not len(args) == self.n:
-      raise Error('invalid number of inputs')
+      raise Exception('invalid number of inputs')
 
     ret = 0.
     for exps, coef in self.data.items():
