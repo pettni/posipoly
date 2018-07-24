@@ -129,7 +129,7 @@ class PPP(object):
 
     for name in Aop_dict.keys():
       if name not in self.varinfo.keys():
-        raise Exception('unknown variable {}'.format())
+        raise Exception('unknown variable {}'.format(name))
 
     n1_list = [Aop_dict[name].n1 for name in Aop_dict.keys()]
     d1_list = [Aop_dict[name].d1 for name in Aop_dict.keys()]
