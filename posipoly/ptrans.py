@@ -31,6 +31,22 @@ class PTrans(object):
     self._d1 = 0             # final degree
     self._cols = {}
 
+  ## ACCESS METHODS
+
+  def cols(self):
+    '''view of columns'''
+    return self._cols.items()
+
+  def __getitem__(self, midx):
+    '''retrieve coefficients via [grlex0][grlex1] operation'''
+    if len(midx) != self._n0:
+      raise TypeError('Multiindex does not match polynomial dimension')
+    try:
+      return self._cols[midx]
+    except KeyError:
+      self._cols[midx] = PTransCol(self._n1)
+      return self._cols[midx]
+
   @property
   def n0(self):
     '''initial number of variables'''
@@ -56,14 +72,13 @@ class PTrans(object):
     '''maximal number of terms'''
     return count_monomials_leq(self.n1, self.d1)  
 
-  @property
   def Acc(self):
     ''' 
     obtain coefficient-format to coefficient-format matrix representation (grlex ordering)
     
     Example
     -------
-    >> A = T.Acc
+    >> A = T.Acc()
     If p(x) = c'*Z(x), then T.p(x) = (A*c)'*Z(x)
 
     '''
@@ -72,7 +87,7 @@ class PTrans(object):
     v = []
     nrow = count_monomials_leq(self.n1, self.d1)
     ncol = count_monomials_leq(self.n0, self.d0)
-    for midx1, col in self._cols.items():
+    for midx1, col in self.cols():
       idx1 = grlex_to_index(midx1)
       for midx2, val in col.items():
         i.append(grlex_to_index(midx2))
@@ -80,14 +95,13 @@ class PTrans(object):
         v.append(val)
     return sp.coo_matrix( (v, (i, j)), shape = (nrow, ncol) )
 
-  @property 
   def Acg(self):
     '''
     obtain gram-format to coefficient-format matrix representation (grlex ordering)
     
     Example
     -------
-    >> A = T.Acg
+    >> A = T.Acg()
     If p(x) = Z(x)'*S*Z(x), then T.p(x) = (A*mat_to_vec(S))'*Z(x)
     '''
     half_deg = int(ceil(float(self._d0)/2))
@@ -108,9 +122,6 @@ class PTrans(object):
     nrow = count_monomials_leq(self._n1, self._d1)
     ncol = len_vec
     return sp.coo_matrix( (v, (i, j)), shape = (nrow, ncol) )
-
-  def rows(self):
-    return self._cols.items()
 
   ## STATIC METHODS ##
 
@@ -458,20 +469,10 @@ class PTrans(object):
 
   ### OVERLOADED OPERATORS ###
 
-  def __getitem__(self, midx):
-    '''retrieve coefficients via [grlex0][grlex1] operation'''
-    if len(midx) != self._n0:
-      raise TypeError('Multiindex does not match polynomial dimension')
-    try:
-      return self._cols[midx]
-    except KeyError:
-      self._cols[midx] = PTransCol(self._n1)
-      return self._cols[midx]
-
   def __str__(self):
     '''string representation'''
     ret = 'Transformation from n=%d, d=%d to n=%d, d=%d : \n' % (self._n0, self._d0, self._n1, self._d1)
-    for key1, col in self._cols.items():
+    for key1, col in self.cols():
       for key2, val in col.items():
         ret += str(key1) + ' --> ' + str(key2) + ' : ' + str(val) + '\n'
     return ret
@@ -481,7 +482,7 @@ class PTrans(object):
     if not self._n0 == other.n0 and self._n1 == other.n1:
       raise TypeError('Dimension mismatch')
     ret = PTrans(self._n0, self._n1)
-    for midx1, col in chain(self._cols.items(), other.rows()):
+    for midx1, col in chain(self.cols(), other.cols()):
       for midx2, val in col.items():
         try:
           ret[midx1][midx2] += val
@@ -496,7 +497,7 @@ class PTrans(object):
     '''unitary addition "+=" '''
     if not self._n0 == other.n0 and self._n1 == other.n1:
       raise TypeError('Dimension mismatch')
-    for midx1, col in other.rows():
+    for midx1, col in other.cols():
       for midx2, val in col.items():
         try:
           self[midx1][midx2] += val
@@ -512,7 +513,7 @@ class PTrans(object):
     if not self._n0 == other.n0 and self._n1 == other.n1:
       raise TypeError('Dimension mismatch')
     ret = copy.deepcopy(self)
-    for midx1, col in other.rows():
+    for midx1, col in other.cols():
       for midx2, val in col.items():
         try:
           ret[midx1][midx2] -= val
@@ -535,7 +536,7 @@ class PTrans(object):
       if not self._n0 == other.n1:
         raise TypeError('Dimension mismatch')
       ret = PTrans(other.n0, self._n1)
-      for midx1, col in other.rows():
+      for midx1, col in other.cols():
         for midxk, val1 in other[midx1].items():
           for midx2, val2 in self[midxk].items():
             ret[midx1][midx2] += val1 * val2
@@ -549,12 +550,12 @@ class PTrans(object):
       if not other.d <= self._d0:
         raise Exception('polynomial has too high degree')
 
-      new_mon_coefs = self.Acc.dot(other.mon_coefs(self._d0))
+      new_mon_coefs = self.Acc().dot(other.mon_coefs(self._d0))
       return Polynomial.from_mon_coefs(self._n1, new_mon_coefs)
 
     # assume its a scalar
     ret = copy.deepcopy(self)
-    for midx1, col in ret.rows():
+    for midx1, col in ret.cols():
       for midx2, val in col.items():
         ret[midx1][midx2] *= other
     return ret
@@ -562,7 +563,7 @@ class PTrans(object):
   def __neg__(self):
     '''unitary negation "-"" '''
     ret = copy.deepcopy(self)
-    for midx1, col in ret.rows():
+    for midx1, col in ret.cols():
       for midx2, val in col.items():
         col[midx2] = -val
     return ret
@@ -571,17 +572,17 @@ class PTrans(object):
 
   def purge(self):
     ''' Remove zeros in representation '''
-    for midx1, col in self._cols.items():
+    for midx1, col in self.cols():
       remove = [k for k,v in col.items() if v == 0.]
       for k in remove: del col[k]
-    remove = [k for k, col in self._cols.items() if len(col) == 0]
+    remove = [k for k, col in self.cols() if len(col) == 0]
     for k in remove: del self._cols[k]
 
   def updated(self):
     '''compute final degree'''
     self._d0 = 0
     self._d1 = 0
-    for key1, col in self._cols.items():
+    for key1, col in self.cols():
       for key2, val in col.items():
         self._d1 = max(self.d1, sum(key2))
       self._d0 = max(self.d0, sum(key1))

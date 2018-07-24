@@ -148,10 +148,10 @@ class PPP(object):
           raise Exception('operator for {} has wrong initial dimension or degree'.format(varname))
         if self.varinfo[varname][2] == 'pp':
           # pp variable
-          matrices[varname] = Aop_dict[varname].Acg
+          matrices[varname] = Aop_dict[varname].Acg()
         else:
           # coefficient variable
-          matrices[varname] = Aop_dict[varname].Acc
+          matrices[varname] = Aop_dict[varname].Acc()
 
         # check varsize
         if not matrices[varname].shape[1] == self.varsize(varname):
@@ -193,9 +193,9 @@ class PPP(object):
       if varname in c_dict:
         if type(c_dict[varname]) is PTrans:
           if self.varinfo[varname][2] == 'pp':
-            vectors[varname] = c_dict[varname].Acg.todense().getA1()
+            vectors[varname] = c_dict[varname].Acg().todense().getA1()
           else:
-            vectors[varname] = c_dict[varname].Acc.todense().getA1()
+            vectors[varname] = c_dict[varname].Acc().todense().getA1()
         else:
           #  array_like
           vectors[varname] = c_dict[varname]
@@ -268,7 +268,7 @@ class PPP(object):
     if self.varinfo[varname][2] == 'coef':
       mon_coefs = self.sol[a:b]
     else:
-      mon_coefs = PTrans.eye(n, d).Acg.dot(self.sol[a,b])
+      mon_coefs = PTrans.eye(n, d).Acg().dot(self.sol[a,b])
 
     return Polynomial.from_mon_coefs(n, mon_coefs)
 
