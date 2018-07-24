@@ -6,7 +6,7 @@ Collection of methods to efficiently create optimization problems over positive 
 
 ## Getting started
 
-The commercial solver Mosek (free licenses for academic use) is currently the only supported solver. Install Mosek and set up the Python interface according to [instructions](https://docs.mosek.com/8.1/pythonapi/install-interface.html#pip-and-wheels). Make sure that ```python -c 'import mosek'``` runs without errors. Then proceed to install the package.
+The commercial solver Mosek (free licenses for academic use) is currently the only supported solver. Install Mosek and set up the Python interface according to [instructions](https://docs.mosek.com/8.1/pythonapi/install-interface.html). Make sure that ```python -c 'import mosek'``` runs without errors. Then proceed to install the package.
 
 ```
 pip install -r requirements.txt
