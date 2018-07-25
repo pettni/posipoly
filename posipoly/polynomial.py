@@ -126,6 +126,13 @@ class Polynomial(object):
       # other is scalar
       return Polynomial(self.n, {exp: coef*other for exp, coef in self.terms()})
 
+  def __neg__(self):
+    '''unary minus'''
+    ret = copy.deepcopy(self)
+    for exp in ret.exponents():
+      ret[exp] *= -1
+    return ret
+
   def mon_coefs(self, max_deg):
     '''return grlex-ordered vector of all coefficients up to max_deg (including zeros)'''
     return np.array([self[exponent] if exponent in self.exponents() else 0

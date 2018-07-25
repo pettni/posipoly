@@ -1,5 +1,14 @@
 from math import ceil, sqrt
 from scipy.special import binom
+import scipy.sparse as sp
+
+def veclen_to_matsize(L):
+  n = (sqrt(1+8*L) - 1)/2
+  assert n == int(n)
+  return int(n)
+
+def matsize_to_veclen(n):
+  return n*(n+1)//2
 
 def k_to_ij(k, L):
   '''
@@ -56,3 +65,16 @@ def double_factorial(n):
   for i in range(n, 0, -2):
     ret *= i
   return ret
+
+def speye(n, pos=0, tot=None):
+  '''
+  return a sparse identity matrix [ 0  I  0]
+  with size n x tot and where the identity matrix
+  starts at pos
+  '''
+  if tot is None:
+    tot = n
+  return sp.coo_matrix( ([1.] * n, (range(n), range(pos, pos+n))), (n,tot) )
+
+def spzeros(n, m):
+  return sp.coo_matrix( (n,m) )

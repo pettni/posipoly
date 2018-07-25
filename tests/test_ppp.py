@@ -52,26 +52,76 @@ def test_sdd_index2():
   np.testing.assert_equal(tt[0][1]-x12, sympy.numbers.Zero)
   np.testing.assert_equal(tt[1][1]-x22, sympy.numbers.Zero)
 
-def test_psd():
+def test_ppp_0():
 
   # find minimal value x such that
   # [1 1; 1 x] is positive semi-definite
 
   c = np.array([0,0,1])
 
-  Aeq = np.array([[1,0,0], [0,1,0]])
+  Aeq = sp.coo_matrix(np.array([[1,0,0], [0,1,0]]))
   beq = np.array([1, 1])
 
-  ppp_list = [ [0, 3] ]
+  env = mosek.Env() 
+  task = env.Task(0,0)
 
-  sol, _ = solve_ppp(c, Aeq, beq, None, None, ppp_list, 'psd')
+  # Add free variables and objective
+  task.appendvars(3)
+  task.putvarboundslice(0, 3, [mosek.boundkey.fr] * 3, [0.]*3, [0.]*3 )
+  task.putcslice(0, 3, c)
+  task.putobjsense(mosek.objsense.minimize)
 
-  mat = vec_to_mat(sol)
+  task.appendcons(2)
+  task.putaijlist(Aeq.row, Aeq.col, Aeq.data)
+  task.putconboundslice(0, 2, [mosek.boundkey.fx] * 2, beq, beq)
+
+  add_psd_mosek( task, sp.coo_matrix(np.eye(3)), np.zeros(3) )
+
+  task.optimize()
+
+  solution = [0.] * len(c)
+  task.getxxslice(mosek.soltype.itr, 0, len(c), solution)
+
+  mat = vec_to_mat(solution)
   v, _ = np.linalg.eig(mat)
 
   np.testing.assert_almost_equal(min(v), 0)
 
-def test_sdd1():
+def test_ppp_1():
+  # p(x) = a0 + a1 x + a2 x^2 sos
+  # p(2) = 1
+  # max a1
+
+  # sos constraint added via variable
+  prob = PPP()
+  prob.add_var('s', 1, 2, 'pp')
+
+  prob.add_constraint({'s': PTrans.eval(1, 2, [0], [2])}, Polynomial.one(1), 'eq')
+  prob.set_objective({'s': -PTrans.eval0(1, 1)*PTrans.diff(1,2,0)})
+
+  sol, _ = prob.solve('psd')
+  pol = prob.get_poly('s')
+
+  np.testing.assert_almost_equal(pol(2), 1)
+  np.testing.assert_almost_equal((PTrans.eval0(1, 1)*PTrans.diff(1,2,0)*pol)(1), 0.25)
+  np.testing.assert_almost_equal([pol[(0,)], pol[(1,)], pol[(2,)]], [0.25, 0.25, 0.0625], decimal=3)
+
+  # same problem, sos constraint added via add_constraint
+  prob = PPP()
+  prob.add_var('s', 1, 2, 'coef')
+
+  prob.add_constraint({'s': PTrans.eval(1, 2, [0], [2])}, Polynomial.one(1), 'eq')
+  prob.set_objective({'s': -PTrans.eval0(1, 1)*PTrans.diff(1,2,0)})
+  prob.add_constraint({'s': PTrans.eye(1,2)}, Polynomial.zero(1), 'pp')
+
+  sol, _ = prob.solve('psd')
+  pol = prob.get_poly('s')
+
+  np.testing.assert_almost_equal(pol(2), 1)
+  np.testing.assert_almost_equal((PTrans.eval0(1, 1)*PTrans.diff(1,2,0)*pol)(1), 0.25)
+  np.testing.assert_almost_equal([pol[(0,)], pol[(1,)], pol[(2,)]], [0.25, 0.25, 0.0625], decimal=3)
+
+def test_ppp1():
 
   tot_deg = 6               # overall degree of problem
   sigma_deg = tot_deg - 2   # degree of sigma
@@ -80,23 +130,23 @@ def test_sdd1():
   p = Polynomial.from_sympy(-x**2 - y**2 + x, [x,y])
   g = Polynomial.from_sympy(1 - x**2 - y**2, [x,y])
 
-  prob = PPP({'gamma': (1, 0, 'coef'),
-              'sigma': (2, sigma_deg, 'pp'),
-              'pos': (2, tot_deg, 'pp')})
-  prob.add_row({'gamma': PTrans.eye(1, 0, n, tot_deg),
-                'sigma': PTrans.mul_pol(n, sigma_deg, g),
-                'pos': PTrans.eye(n, tot_deg)}, 
-               p, 'eq')
+  prob = PPP()
+  prob.add_var('gamma', n, 0, 'coef')
+  prob.add_var('sigma', n, sigma_deg, 'pp')
+  prob.add_constraint({'gamma': -PTrans.eye(n, 0, n, tot_deg),
+                       'sigma': -PTrans.mul_pol(n, sigma_deg, g)}, 
+                       -p, 'pp')
   prob.set_objective({'gamma': [-1]})
 
-  sol, _ = prob.solve('sdd')
-  np.testing.assert_almost_equal(sol[0], -2.)
+  prob.solve('psd') 
+  opt_gamma = prob.get_poly('gamma')(0,0)
+  np.testing.assert_almost_equal(opt_gamma, -2.)
 
-  sol, _ = prob.solve('psd')
-  np.testing.assert_almost_equal(sol[0], -2.)
+  prob.solve('sdd') 
+  opt_gamma = prob.get_poly('gamma')(0,0)
+  np.testing.assert_almost_equal(opt_gamma, -2.)
 
-
-def test_sdd2():
+def test_ppp2():
 
   tot_deg = 6               # overall degree of problem
   sigma_deg = tot_deg - 2   # degree of sigma
@@ -105,24 +155,23 @@ def test_sdd2():
   p = Polynomial.from_sympy(x**2 + y**2, [x,y])
   g = Polynomial.from_sympy(1 - x**2 - y**2, [x,y])
 
-  prob = PPP({'gamma': (1, 0, 'coef'),
-              'sigma': (2, sigma_deg, 'pp'),
-              'pos': (2, tot_deg, 'pp')})
-  prob.add_row({'gamma': PTrans.eye(1, 0, n, tot_deg),
-                'sigma': PTrans.mul_pol(n, sigma_deg, g),
-                'pos': PTrans.eye(n, tot_deg)}, 
-               p, 'eq')
+  prob = PPP()
+  prob.add_var('gamma', n, 0, 'coef')
+  prob.add_var('sigma', n, sigma_deg, 'pp')
+  prob.add_constraint({'gamma': -PTrans.eye(n, 0, n, tot_deg),
+                       'sigma': -PTrans.mul_pol(n, sigma_deg, g)}, 
+                       -p, 'pp')
   prob.set_objective({'gamma': [-1]})
 
-  sol, _ = prob.solve('sdd')
-  np.testing.assert_almost_equal(sol[0], 0.)
+  prob.solve('psd') 
+  opt_gamma = prob.get_poly('gamma')(0,0)
+  np.testing.assert_almost_equal(opt_gamma, 0.)
 
-  sol, _ = prob.solve('psd')
-  np.testing.assert_almost_equal(sol[0], 0.)
+  prob.solve('sdd') 
+  opt_gamma = prob.get_poly('gamma')(0,0)
+  np.testing.assert_almost_equal(opt_gamma, 0.)
 
-
-
-def test_sdd3():
+def test_ppp3():
 
   tot_deg = 6               # overall degree of problem
   sigma_deg = tot_deg - 2   # degree of sigma
@@ -131,44 +180,18 @@ def test_sdd3():
   p = Polynomial.from_sympy(2+(x-0.5)**2 + y**2, [x,y])
   g = Polynomial.from_sympy(1 - x**2 - y**2, [x,y])
 
-  prob = PPP({'gamma': (1, 0, 'coef'),
-              'sigma': (2, sigma_deg, 'pp'),
-              'pos': (2, tot_deg, 'pp')})
-  prob.add_row({'gamma': PTrans.eye(1, 0, n, tot_deg),
-                'sigma': PTrans.mul_pol(n, sigma_deg, g),
-                'pos': PTrans.eye(n, tot_deg)}, 
-               p, 'eq')
+  prob = PPP()
+  prob.add_var('gamma', n, 0, 'coef')
+  prob.add_var('sigma', n, sigma_deg, 'pp')
+  prob.add_constraint({'gamma': -PTrans.eye(n, 0, n, tot_deg),
+                       'sigma': -PTrans.mul_pol(n, sigma_deg, g)}, 
+                       -p, 'pp')
   prob.set_objective({'gamma': [-1]})
 
-  sol, _ = prob.solve('sdd')
-  np.testing.assert_almost_equal(sol[0], 2.)
+  prob.solve('psd') 
+  opt_gamma = prob.get_poly('gamma')(0,0)
+  np.testing.assert_almost_equal(opt_gamma, 2.)
 
-  sol, _ = prob.solve('psd')
-  np.testing.assert_almost_equal(sol[0], 2.)
-
-
-def test_ppp():
-
-  Aiq = -np.eye(2)
-  biq = np.zeros(2)
-
-  c = [1, 1]
-
-  sol, sta = solve_ppp(c, None, None, Aiq, biq, [])
-  
-  np.testing.assert_equal(sta, mosek.solsta.optimal)
-  np.testing.assert_almost_equal(sol, [0,0])
-
-  Aeq = np.array([[1,0]])
-  beq = [1]
-
-  sol, sta = solve_ppp(c, Aeq, beq, Aiq, biq, [])
-  np.testing.assert_equal(sta, mosek.solsta.optimal)
-  np.testing.assert_almost_equal(sol, [1,0])
-
-  Aeq = np.array([[1,2]])
-  beq = [1]
-
-  sol, sta = solve_ppp(c, Aeq, beq, Aiq, biq, [])
-  np.testing.assert_equal(sta, mosek.solsta.optimal)
-  np.testing.assert_almost_equal(sol, [0,0.5])
+  prob.solve('sdd') 
+  opt_gamma = prob.get_poly('gamma')(0,0)
+  np.testing.assert_almost_equal(opt_gamma, 2.)

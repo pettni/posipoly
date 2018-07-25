@@ -290,10 +290,15 @@ class PTrans(object):
         return PTrans.eval(n0-1,d0,i_list[:-1], val_list[:-1]) * PTrans.eval(n0,d0,i_list[-1], val_list[-1])
       else:
         return PTrans.eval(n0,d0,i_list[0], val_list[0])
-    T = PTrans(n0,n0-1)
-    for idx in grlex_iter((0,)*n0, d0):
-      new_idx = tuple(idx[i] for i in range(len(idx)) if i != i_list)
-      T[idx][new_idx] += val_list**idx[i_list]
+    T = PTrans(n0, max(1, n0-1))
+
+    if n0 == 1:
+      for idx in grlex_iter((0,)*n0, d0):
+        T[idx][(0,)] += val_list**idx[0]
+    else:
+      for idx in grlex_iter((0,)*n0, d0):
+        new_idx = tuple(idx[i] for i in range(len(idx)) if i != i_list)
+        T[idx][new_idx] += val_list**idx[i_list]
     T.updated()
     return T
 

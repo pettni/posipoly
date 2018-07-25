@@ -20,6 +20,12 @@ def test_eval():
   np.testing.assert_equal(L[0,2][(2,)], 1)
   np.testing.assert_equal(L[1,0][(0,)], 0)
 
+  L = PTrans.eval(2,2,0,1)
+  np.testing.assert_equal(L[0,0][(0,)], 1)
+  np.testing.assert_equal(L[0,1][(1,)], 1)
+  np.testing.assert_equal(L[0,2][(2,)], 1)
+  np.testing.assert_equal(L[1,0][(0,)], 1)
+
 def test_multi_eval():
   L = PTrans.eval(3,3,[0, 1],[0,3])
   np.testing.assert_equal(L[0,0,0][(0,)], 1)
@@ -35,12 +41,14 @@ def test_multi_eval2():
   np.testing.assert_equal(L[0,0,2][(0,)], 9)
   np.testing.assert_equal(L[2,0,0][(0,)], 1)
 
-def test_eval2():
-  L = PTrans.eval(2,2,0,1)
-  np.testing.assert_equal(L[0,0][(0,)], 1)
-  np.testing.assert_equal(L[0,1][(1,)], 1)
-  np.testing.assert_equal(L[0,2][(2,)], 1)
-  np.testing.assert_equal(L[1,0][(0,)], 1)
+def test_eval_1d():
+  L = PTrans.eval(1,3,[0],[3])
+  np.testing.assert_equal(L.n1, 1)
+  np.testing.assert_equal(L.d1, 0)
+  np.testing.assert_equal(L[(0,)][(0,)], 1)
+  np.testing.assert_equal(L[(1,)][(0,)], 3)
+  np.testing.assert_equal(L[(2,)][(0,)], 9)
+  np.testing.assert_equal(L[(3,)][(0,)], 27)
 
 def test_mulpol():
   poly = Polynomial(2, { (2,0): 1, (0,2): -1, (1,0): 3 })
