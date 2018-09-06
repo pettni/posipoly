@@ -1,4 +1,5 @@
 from math import sqrt, ceil
+
 from scipy.misc import comb
 
 def count_monomials_leq(n, d):

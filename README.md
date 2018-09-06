@@ -106,11 +106,19 @@ solve_ppp(c, Aeq, beq, Aiq, biq, pp_list, 'sdd')   # same problem in the SDD con
 ```
 The matrices `Aeq` and `beq` can be obtained from `PTrans` objects via the `Acg` and `Acc` properties to obtain matrix representations of the transformations from g-format to c-format, and from c-format to c-format, respectively.
 
+## Todo list
+
+ - Use named tuples for ppp variables
+ - Use default dictionaries in PTrans Polynomial 
+
 ## Future list
 
  - Profile the grlex code. Potentially switch to grevlex and/or use Cython to make this part faster
  - Implement class for sparsity patterns and enable sparse optimization
- - Interface with other solvers than Mosek (or interface with a package like cvxpy)
+ - Interface with other solvers than Mosek
+  - SCS: https://github.com/cvxgrp/scs  (used by cvxpy)
+  - cvxopt  
+  - dsdp: http://www.mcs.anl.gov/hs/software/DSDP/ (optional in cvxopt)
 
 ## Research questions
 

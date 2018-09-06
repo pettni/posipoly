@@ -125,8 +125,8 @@ class PTrans(object):
 
   ## STATIC METHODS ##
 
-  @staticmethod
-  def eye(n0, d0, n1=None, d1=None):
+  @classmethod
+  def eye(cls, n0, d0, n1=None, d1=None):
     '''
     identity transformation 
     p(x1, ..., xn0) |--> p(x1, ..., xn0)
@@ -158,7 +158,7 @@ class PTrans(object):
 
     if n1 < n0:
       raise Exception('eye requires n1 >= n0')
-    T = PTrans(n0, n1)
+    T = cls(n0, n1)
     T._d0 = d0
     for idx in grlex_iter((0,) *  n0, d0):
       idx_mod = idx + (0,) * (n1-n0)
@@ -167,8 +167,8 @@ class PTrans(object):
     T._d1 = d1
     return T
 
-  @staticmethod
-  def diff(n0, d0, i):
+  @classmethod
+  def diff(cls, n0, d0, i):
     '''
     differentiation transformation
     p(x1, ..., xn0) |--> (d/dxi) p(x1, ..., xn0)
@@ -189,7 +189,7 @@ class PTrans(object):
       transformation from C(n0, d0) to C(n0, d0-1)
 
     '''
-    T = PTrans(n0,n0)
+    T = cls(n0,n0)
     T._d0 = d0
     for idx in grlex_iter((0,)*n0, d0):
       k = idx[i]
@@ -199,8 +199,8 @@ class PTrans(object):
     T._d1 = d0-1
     return T
 
-  @staticmethod
-  def int(n0, d0, i):
+  @classmethod
+  def int(cls, n0, d0, i):
     '''
     integration transformation
     p(x1, ..., xn0) |--> \int p(x1, ..., xn0) dxi 
@@ -219,7 +219,7 @@ class PTrans(object):
     T : PTrans
       transformation from C(n0, d0) to C(n0, d0+1)
     '''
-    T = PTrans(n0,n0)
+    T = cls(n0,n0)
     T._d0 = d0
     T._d1 = d0+1
     for idx in grlex_iter((0,)*n0, d0):
@@ -228,8 +228,8 @@ class PTrans(object):
       T[idx][new_idx] = 1./(float(k)+1)
     return T
 
-  @staticmethod
-  def eval0(n0, d0, keep_dims=False):
+  @classmethod
+  def eval0(cls, n0, d0, keep_dims=False):
     '''
     extract constant term
     p(x1, ..., xn) |--> p(0, ..., 0)
@@ -251,14 +251,14 @@ class PTrans(object):
 
     '''
     n1 = n0 if keep_dims else 1
-    T = PTrans(n0, n1)
+    T = cls(n0, n1)
     T._d0 = d0
     T._d1 = 0
     T[(0,)*n0][(0,) * n1] = 1
     return T
 
-  @staticmethod
-  def eval(n0, d0, i_list, val_list, keep_dims=False):
+  @classmethod
+  def eval(cls, n0, d0, i_list, val_list, keep_dims=False):
     '''
     evaluation transformation
     p(x1, ..., xn) |--> p(x1, ..., xn) /. xi -> val_list[i] for i in i_list 
@@ -290,7 +290,7 @@ class PTrans(object):
         return PTrans.eval(n0-1,d0,i_list[:-1], val_list[:-1]) * PTrans.eval(n0,d0,i_list[-1], val_list[-1])
       else:
         return PTrans.eval(n0,d0,i_list[0], val_list[0])
-    T = PTrans(n0, max(1, n0-1))
+    T = cls(n0, max(1, n0-1))
 
     if n0 == 1:
       for idx in grlex_iter((0,)*n0, d0):
@@ -302,8 +302,8 @@ class PTrans(object):
     T.updated()
     return T
 
-  @staticmethod
-  def mul_pol(n0, d0, g):
+  @classmethod
+  def mul_pol(cls, n0, d0, g):
     '''
     multiplication transformation
     p(x1, ..., xn) |--> p(x1, ..., xn) * g(x1, ..., xn)
@@ -326,7 +326,7 @@ class PTrans(object):
     if not n0 == g.n:
       raise Exception('g must a polynomial in n0 variables')
 
-    T = PTrans(n0,n0)
+    T = cls(n0,n0)
     maxdeg = 0
     for midx, cf in g.terms():
       for idx in grlex_iter((0,)*n0, d0):
@@ -337,8 +337,8 @@ class PTrans(object):
     T._d1 = d0 + maxdeg
     return T
 
-  @staticmethod
-  def integrate(n0, d0, i_list, ival_list, keep_dims=False):
+  @classmethod
+  def integrate(cls, n0, d0, i_list, ival_list, keep_dims=False):
     '''
     integration over box transformation
     p(x1, ..., xn) |--> \int_{xi \in ival_list[i] for i in i_list} p(x1, ..., xn) dx(i for i in i_list)
@@ -371,7 +371,7 @@ class PTrans(object):
 
     dim_box = sorted(zip(i_list, ival_list), key = lambda obj : -obj[0])
 
-    T = PTrans.eye(n0,d0)  # start with right-hand identity
+    T = cls.eye(n0,d0)  # start with right-hand identity
 
     for (dim, box) in dim_box:
       int_trans = PTrans.int(T.n1,d0,dim)  # p.n1 -> p.n1
@@ -381,8 +381,8 @@ class PTrans(object):
     T.updated()
     return T
 
-  @staticmethod
-  def composition(n0, d0, g_list, keep_dims=False):
+  @classmethod
+  def composition(cls, n0, d0, g_list, keep_dims=False):
     '''
     composition transformation
     p(x1, ..., xn0) |--> p(g_list[0], ..., g_list[n0-1])
@@ -415,7 +415,7 @@ class PTrans(object):
     if not all(g.n == n1 for g in g_list):
       raise Exception('all gs must have same number of variables')
 
-    T = PTrans(n0, n1)
+    T = cls(n0, n1)
     T._d0 = d0
     T._d1 = d0 * gd
 
@@ -434,8 +434,8 @@ class PTrans(object):
           T[exp0][exp1] += coef
     return T
 
-  @staticmethod
-  def gaussian_expectation(n0, d0, i, sigma, keep_dims=False):
+  @classmethod
+  def gaussian_expectation(cls, n0, d0, i, sigma, keep_dims=False):
     '''
     Gaussian expectation transformation
     p(x1, ..., xn) = E_i[p(x1, ..., xn)]  for xi ~ N(0, sigma^2)
@@ -461,7 +461,7 @@ class PTrans(object):
     if keep_dims:
       raise NotImplementedError
 
-    T = PTrans(n0,n0-1)
+    T = cls(n0,n0-1)
     T._d0 = d0
     for idx in grlex_iter((0,)*n0, d0):
       new_idx = tuple(idx[j] for j in range(len(idx)) if j != i)

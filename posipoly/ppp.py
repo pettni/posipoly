@@ -1,26 +1,15 @@
-import numpy as np
-import scipy.sparse as sp
 from math import sqrt, ceil
 from collections import OrderedDict
 import time
 
+import numpy as np
+import scipy.sparse as sp
 import mosek
 
 from .utils import mat_to_vec, vec_to_mat, ij_to_k, k_to_ij, veclen_to_matsize, speye, spzeros
 from .grlex import count_monomials_leq
 from .ptrans import PTrans
 from .polynomial import Polynomial
-
-def sdd_index(i,j,n):
-  """ An n x n sdd matrix A can be written as A = sum Mij.
-    Given Mij's stored as a (n-1)*n/2 x 3 matrix, where each row represents a 2x2 symmetric matrix, return
-      the indices i_s, j_s such that A_ij = sum_s Mij(i_s, j_s) """
-  num_vars = int(n*(n-1)/2)
-  if i == j:
-    return [ [ij_to_k(min(i,l), max(i,l)-1, num_vars),(0 if i<l else 1)] for l in range(n) if l != i ]
-  else:
-    return [[ij_to_k(min(i,j), max(i,j)-1, num_vars),2]]
-
 
 class PPP(object):
   """Positive Polynomial Program"""
@@ -92,9 +81,9 @@ class PPP(object):
   def add_constraint(self, Aop_dict, b, tp):
     ''' 
     add a constraint to problem of form
-    T1 var1 + T2 var2 <= b             tp='iq'
-    T1 var1 + T2 var2 = b              tp='eq'
-    T1 var1 + T2 var2 + C = b, C >= 0  tp='pp'
+    T1 var1 + T2 var2 <= b     if tp=='iq'   (coefficient-wise inequality)
+    T1 var1 + T2 var2  = b     if tp=='eq'   (coefficient-wise equality)
+    T1 var1 + T2 var2 - b  pp  if tp=='pp'   (positive polynomial)
 
     Parameters
     ----------
@@ -109,7 +98,7 @@ class PPP(object):
   
     Example
     ----------
-    >>> prob = PPP({'x': (2, 2, 'gram'), 'y': (3, 3, 'gram')})
+    >>> prob = PPP({'x': (2, 2, 'gram'), 'y': (2, 3, 'gram')})
     >>> T = PTrans.eye(2,2)
     >>> b = Polynomial({(1,2): 1})  # x * y**2
     >>> prob.add_constraint({'x': T}, b, 'eq')
@@ -118,12 +107,15 @@ class PPP(object):
     if tp not in ['eq', 'iq', 'pp']:
       raise Exception('tp must be "eq" or "iq" or "pp"')
 
-    if tp == 'iq' and b.d > 0:
-      print('Warning: adding coefficient-wise inequality constraint. make sure this is what you want')
-
     for name in Aop_dict.keys():
       if name not in self.varinfo.keys():
         raise Exception('unknown variable {}'.format(name))
+
+    if not all(Aop_dict[name].n0 == self.varinfo[name][0] for name in Aop_dict.keys()):
+      raise Exception('PTrans initial dimensions do not agree')
+
+    if not all(Aop_dict[name].d0 >= self.varinfo[name][1] for name in Aop_dict.keys()):
+      raise Exception('PTrans initial degrees too low')
 
     n1_list = [Aop_dict[name].n1 for name in Aop_dict.keys()]
     d1_list = [Aop_dict[name].d1 for name in Aop_dict.keys()]
@@ -132,6 +124,9 @@ class PPP(object):
 
     if n1_list[0] != b.n or d1_list[0] < b.d:
       raise Exception('must have b.n = Aop.n1 and b.d <= Aop.d1 for all Aop')
+
+    if tp == 'iq' and b.d > 0:
+      print('Warning: adding coefficient-wise inequality constraint. make sure this is what you want')
 
     n = n1_list[0]
     d = d1_list[0]
@@ -156,48 +151,41 @@ class PPP(object):
     if not type(c_dict) is dict:
       raise Exception('c_dict must be dict')
 
-    vectors = dict()
-    for varname in self.varnames:
-      if varname in c_dict:
-        if type(c_dict[varname]) is PTrans:
-          if self.varinfo[varname][2] == 'pp':
-            vectors[varname] = c_dict[varname].Acg().todense().getA1()
-          else:
-            vectors[varname] = c_dict[varname].Acc().todense().getA1()
+    def pick_vec(varname):
+      if varname not in c_dict.keys():
+        # zeros
+        return np.zeros(self.varsize(varname))
+      if type(c_dict[varname]) is PTrans:
+        if not c_dict[varname].d1 == 0:
+          raise Exception('cost for {} not scalar'.format(varname))
+        if self.varinfo[varname][2] == 'pp':
+          return c_dict[varname].Acg().todense().getA1()
         else:
-          #  array_like
-          vectors[varname] = c_dict[varname]
+          return c_dict[varname].Acc().todense().getA1()
       else:
-        # zero cost
-        vectors[varname] = np.zeros(self.varsize(varname))
-      if not len(vectors[varname]) == self.varsize(varname):
-        raise Exception('weight for {} has wrong size'.format(varname))
+        #  array_like
+        if len(c_dict[varname]) != self.varsize(varname):
+          raise Exception('cost for {} is wrong size'.format(varname))
+        return c_dict[varname]
 
-    self.c = np.hstack([vectors[varname] for varname in self.varnames])
+    self.c = np.hstack([pick_vec(varname) for varname in self.varnames])
+    if not len(self.c) == self.numvar:
+      raise Exception('wrong size of objective')
 
   def get_bmat(self, Aop_dict, numcon):
     ''' 
     concatenate matrices in dict in variable order, fill in with zero matrix
     for those variables that do not appear
     '''
-    matrices = dict()
-    for varname in self.varnames:
-      if varname in Aop_dict.keys():
-        if Aop_dict[varname].d0 != self.varinfo[varname][1] or Aop_dict[varname].n0 != self.varinfo[varname][0]:
-          raise Exception('operator for {} has wrong initial dimension or degree'.format(varname))
-        if self.varinfo[varname][2] == 'pp':
-          # pp variable
-          matrices[varname] = Aop_dict[varname].Acg()
-        else:
-          # coefficient variable
-          matrices[varname] = Aop_dict[varname].Acc()
-        # check varsize
-        if not matrices[varname].shape[1] == self.varsize(varname):
-          raise Exception('transformation for {} is wrong size, check initial degree'.format(varname))
-      else:
-        # add zero matrix
-        matrices[varname] = sp.coo_matrix((numcon, self.varsize(varname)))
-    return sp.bmat([[matrices[name] for name in self.varnames]])
+    def pick_mat(varname):
+      if varname not in Aop_dict.keys():
+        return spzeros(numcon, self.varsize(varname))
+      if self.varinfo[varname][2] == 'pp':
+        return Aop_dict[varname].Acg()
+      if self.varinfo[varname][2] == 'coef':
+        return Aop_dict[varname].Acc()
+
+    return sp.bmat([[pick_mat(vn) for vn in self.varnames]])
 
 
   def solve(self, pp_cone):
@@ -256,12 +244,18 @@ class PPP(object):
     for varname in self.varnames:
       if self.varinfo[varname][2] == 'pp':
         Asp = speye(self.varsize(varname), self.varpos(varname), self.numvar)
-        add_psd_mosek(task, Asp, np.zeros(self.varsize(varname)) )
+        if pp_cone == 'psd':
+          add_psd_mosek(task, Asp, np.zeros(self.varsize(varname)) )
+        if pp_cone == 'sdd':
+          add_sdd_mosek(task, Asp, np.zeros(self.varsize(varname)) )
 
     # add pp constraints
     for (Aop_dict, b_pol, n, d, tp) in self.constraints:
       if tp == 'pp':
-        add_psd_mosek(task, self.get_bmat(Aop_dict, count_monomials_leq(n, d)), b_pol.mon_coefs(d), PTrans.eye(n, d).Acg())
+          if pp_cone == 'psd':
+            add_psd_mosek(task, self.get_bmat(Aop_dict, count_monomials_leq(n, d)), b_pol.mon_coefs(d), PTrans.eye(n, d).Acg())
+          if pp_cone == 'sdd':
+            add_sdd_mosek(task, self.get_bmat(Aop_dict, count_monomials_leq(n, d)), b_pol.mon_coefs(d), PTrans.eye(n, d).Acg())
 
     print('optimizing...')
     t_start = time.clock()
@@ -322,7 +316,7 @@ class PPP(object):
 
 def add_sdd_mosek(task, A, b, Ac=None):
   ''' 
-    add constraints
+    add a variable C and constraints
       A*x - Ac vec(C) = b
       C SDD
     which with an appropriate choice of Ac makes A*x - b >= 0
@@ -348,7 +342,7 @@ def add_sdd_mosek(task, A, b, Ac=None):
   numcon = task.getnumcon()
   numvar = task.getnumvar()
 
-  # we need this many new variables
+  # we need 3x this many new variables
   numvar_new = C_size * (C_size-1) // 2
   numcon_new = A.shape[0]
 
@@ -357,7 +351,7 @@ def add_sdd_mosek(task, A, b, Ac=None):
   #   [ old_constr   0  ]  [    x     ]    [old_rhs ]
   #   [     A     -Ac D ]  [ new_vars ]  = [  b     ]
   #
-  # where D maps from new_vars to vec(C)
+  # where D such that vec(C) = D * new_vars
 
   # build 'D' matrix
   D_row_idx = []
@@ -383,7 +377,7 @@ def add_sdd_mosek(task, A, b, Ac=None):
   task.appendcons(numcon_new)
 
   # put [A  -Ac*D] [x; new_vars] = b matrix
-  new_A = sp.bmat([[A, sp.coo_matrix((numcon_new, numvar - A.shape[1])), -Ac.dot(D)]]).tocsr()
+  new_A = sp.bmat([[A, spzeros(numcon_new, numvar - A.shape[1]), -Ac.dot(D)]]).tocsr()
   task.putarowslice(numcon, numcon + numcon_new, new_A.indptr[:-1], new_A.indptr[1:], new_A.indices, new_A.data)
   task.putconboundslice( numcon, numcon + numcon_new, [mosek.boundkey.fx] * numcon_new, b, b )
 
@@ -392,7 +386,7 @@ def add_sdd_mosek(task, A, b, Ac=None):
 
 def add_psd_mosek(task, A, b, Ac = None):
   ''' 
-  add constraints
+  add a variable C and constraints
     A*x - Ac*vec(C) = b
     C PSD
   which with an appropriate choice of Ac makes A*x - b >= 0
@@ -484,3 +478,13 @@ def is_sdd(A):
     return True
 
   return False
+
+def sdd_index(i,j,n):
+  """ An n x n sdd matrix A can be written as A = sum Mij.
+    Given Mij's stored as a (n-1)*n/2 x 3 matrix, where each row represents a 2x2 symmetric matrix, return
+      the indices i_s, j_s such that A_ij = sum_s Mij(i_s, j_s) """
+  num_vars = int(n*(n-1)/2)
+  if i == j:
+    return [ [ij_to_k(min(i,l), max(i,l)-1, num_vars),(0 if i<l else 1)] for l in range(n) if l != i ]
+  else:
+    return [[ij_to_k(min(i,j), max(i,j)-1, num_vars),2]]

@@ -1,5 +1,6 @@
-import numpy as np
 import copy
+
+import numpy as np
 
 from .grlex import index_to_grlex, grlex_iter
 from .utils import multinomial
@@ -70,18 +71,18 @@ class Polynomial(object):
       return max(sum(exp) for exp, _ in self.terms())
     return 0
 
-  @staticmethod
-  def zero(n):
+  @classmethod
+  def zero(cls, n):
     '''n variable zero polynomial p(x1, ..., xn) = 0'''
-    return Polynomial(n)
+    return cls(n)
 
-  @staticmethod
-  def one(n):
+  @classmethod
+  def one(cls, n):
     '''n variable one polynomial p(x1, ..., xn) = 1'''
-    return Polynomial(n, {(0,) * n: 1})
+    return cls(n, {(0,) * n: 1})
 
-  @staticmethod
-  def from_sympy(expr, vars):
+  @classmethod
+  def from_sympy(cls, expr, vars):
     '''
     create a polynomial in variables 'vars' from a sympy expression 'expr' (requires sympy)
     
@@ -91,13 +92,13 @@ class Polynomial(object):
     >> p = Polynomial.from_sympy(x**2 * y + 2*x, [x,y])
     '''
     import sympy
-    return Polynomial(len(vars), dict( sympy.polys.Poly(expr, *vars).terms()) )
+    return cls(len(vars), dict( sympy.polys.Poly(expr, *vars).terms()) )
 
-  @staticmethod
-  def from_mon_coefs(n, mon_coefs):
+  @classmethod
+  def from_mon_coefs(cls, n, mon_coefs):
     '''create a polynomial in 'n' variables from a list 'mon_coefs' of coefficients (grlex ordering)'''
     max_deg = sum(index_to_grlex(len(mon_coefs), n))
-    return Polynomial(n, dict(zip(grlex_iter((0,) * n, max_deg), mon_coefs)))
+    return cls(n, dict(zip(grlex_iter((0,) * n, max_deg), mon_coefs)))
 
   def __pow__(self, p):
     '''compute new polynomial g(x)**p'''
