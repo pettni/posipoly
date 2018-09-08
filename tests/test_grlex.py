@@ -1,6 +1,6 @@
 import numpy as np
 import itertools
-
+from nose.tools import raises
 from posipoly.grlex import *
 
 def test_index_to_grlex():
@@ -22,20 +22,14 @@ def test_grlex_iter():
     np.testing.assert_equal( (grlex_key( idx1) < grlex_key(idx2 )), True )
     idx1 = idx2
 
+@raises(StopIteration)
 def test_grlex_iter2():
   iterator = grlex_iter( (0,0,0,0), 4 )
 
   for k in range(count_monomials_leq(4,4)):
     next(iterator)
   
-  try:
-    next(iterator)
-  except StopIteration:
-    pass
-  except:
-    self.fail('Unexpected exception thrown:')
-  else:
-    self.fail('ExpectedException not thrown')
+  next(iterator)
 
 def test_grlex_iter_multi():
   m1 = 5
@@ -49,17 +43,7 @@ def test_grlex_iter_multi():
     asd =  next(iterator)
     if k == m1+1:
       np.testing.assert_equal(asd, (0,1,0))
-
   np.testing.assert_equal(asd , (m1,m2,m3))
-
-  try:
-    next(iterator)
-  except StopIteration:
-    pass
-  except:
-    self.fail('Unexpected exception thrown:')
-  else:
-    self.fail('ExpectedException not thrown')
 
 def test_vec_to_grlex1():
   coef, exp = vec_to_grlex(10,3)
