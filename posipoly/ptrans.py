@@ -2,6 +2,7 @@ from math import ceil, sqrt
 from itertools import chain
 import copy
 
+import numpy as np
 import scipy.sparse as sp
 
 from .polynomial import Polynomial
@@ -23,7 +24,7 @@ class PTrans(object):
     if n0 < 1:
       raise Exception('n0 must be >= 1')
     if n1 < 1:
-      raise Exception('n0 must be >= 1')
+      raise Exception('n1 must be >= 1')
 
     self._n0 = n0            # initial  number of variables
     self._n1 = n1            # final number of variables
@@ -396,7 +397,7 @@ class PTrans(object):
     g_list: list of Polynomial
       polynomials representing composition operation
     keep_dims : bool (optional)
-      if True, target polynomial is in n0 variables, otherwise n0-len(g_list)
+      if True, target polynomial is in n0 variables, otherwise dim(g_list[i])
 
     Returns
     ----------
@@ -407,7 +408,7 @@ class PTrans(object):
       raise NotImplementedError
 
     if not (n0 == len(g_list)):
-      raise Exception('composition can only be done from n0=1')
+      raise Exception('composition can only be done if n0=len(g_list)')
 
     n1 = g_list[0].n
     gd = max(g.d for g in g_list)
@@ -435,7 +436,7 @@ class PTrans(object):
     return T
 
   @classmethod
-  def gaussian_expectation(cls, n0, d0, i, sigma, keep_dims=False):
+  def gaussian_expectation_1d(cls, n0, d0, i, sigma, keep_dims=False):
     '''
     Gaussian expectation transformation
     p(x1, ..., xn) = E_i[p(x1, ..., xn)]  for xi ~ N(0, sigma^2)
@@ -459,18 +460,100 @@ class PTrans(object):
     '''
 
     if keep_dims:
-      raise NotImplementedError
+      T = cls(n0,n0)
+    else:
+      T = cls(n0,n0-1)
 
-    T = cls(n0,n0-1)
     T._d0 = d0
     for idx in grlex_iter((0,)*n0, d0):
-      new_idx = tuple(idx[j] for j in range(len(idx)) if j != i)
+      if keep_dims:
+        new_idx = tuple(idx[j] if j != i else 0 for j in range(len(idx)))
+      else:
+        new_idx = tuple(idx[j] for j in range(len(idx)) if j != i)
+
       if idx[i] > 0 and (idx[i] % 2) == 0:
         T[idx][new_idx] = sigma**idx[i] * double_factorial(idx[i]-1)
       if idx[i] == 0:
         T[idx][new_idx] = 1
     T.updated()
     return T
+
+  @classmethod
+  def linear_transformation(cls, n0, d0, A):
+    '''
+    composition transformation
+    p(x) = p(x1, ..., xn0) |--> p( A x )
+
+    Parameters
+    ----------
+    n0 : int
+      initial number of variables
+    d0 : int
+      initial degree
+    A: matrix representing linear transformation
+      polynomials representing composition operation
+
+    Returns
+    ----------
+    T : PTrans
+    '''
+
+    def e(j, n):
+      # j-unit n-tuple
+      return tuple(1 if i==j else 0 for i in range(n))
+
+    # linear transformation as polynomial 
+    g_list = [Polynomial(n0, {e(j, n0) : A[i, j] for j in range(n0)} ) for i in range(n0) ]
+
+    return PTrans.composition(n0, d0, g_list)
+
+
+  @classmethod
+  def gaussian_expectation(cls, n0, d0, i_list, Sigma, keep_dims=False):
+    '''
+    Gaussian expectation transformation
+    p(x1, ..., xn) = E_i[p(x1, ..., xn)]  for x[i_list] ~ N(0, Sigma)
+
+    Parameters
+    ----------
+    n0 : int
+      initial number of variables
+    d0 : int
+      initial degree
+    i: int
+      index of Gaussian variable
+    Sigma: number
+      Gaussian variance
+    keep_dims : bool (optional)
+      if True, target polynomial is in n0 variables, otherwise n0-1
+
+    Returns
+    ----------
+    T : PTrans
+    '''
+
+    if keep_dims:
+      raise NotImplementedError
+
+    if not all(len(i_list) == np.array(Sigma.shape)):
+      raise Exception('wrong size of Sigma')
+
+    K = np.linalg.cholesky(Sigma)
+
+    K_full = np.eye(n0)
+    for i_n, i in enumerate(i_list):
+      for j_n, j in enumerate(i_list):
+        K_full[i,j] = K[i_n, j_n]
+
+    ret = cls.linear_transformation(n0, d0, K_full)
+
+    i_list = sorted(i_list)
+    for i in reversed(i_list):
+      keep_dims = n0 == 1
+      ret = cls.gaussian_expectation_1d(n0=n0, d0=d0, i=i, sigma=1, keep_dims=keep_dims) * ret
+      n0 -= 1
+
+    return ret
 
   ### OVERLOADED OPERATORS ###
 

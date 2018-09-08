@@ -164,12 +164,32 @@ def test_double_composition():
   np.testing.assert_equal(Pt[0,2], 1)
   np.testing.assert_equal(Pt[2,2], 2)
 
+def test_linear_transformation():
+  A = np.eye(3)
+
+  L = PTrans.linear_transformation(3, 3, A).Acc()
+
+  L1 = PTrans.eye(3,3).Acc()
+
+  np.testing.assert_array_equal(L.todense(), L1.todense())
+
+def test_linear_transformation2():
+  A = np.eye(2)
+  A[1,1] = 2
+
+  L = PTrans.linear_transformation(2, 3, A)
+
+  np.testing.assert_equal(L[0,0][0,0], 1)
+  np.testing.assert_equal(L[1,0][1,0], 1)
+  np.testing.assert_equal(L[0,1][0,1], 2)
+  np.testing.assert_equal(L[1,2][1,2], 4)
+
 
 def test_gaussian_expectation():
 
   g = Polynomial(2, {(0,2): 1, (2,0): 1, (1,1): 2, (1,2): 1})
 
-  L = PTrans.gaussian_expectation(n0=2, d0=3, i=1, sigma=4)
+  L = PTrans.gaussian_expectation_1d(n0=2, d0=3, i=1, sigma=4)
 
   g_t = L * g
 
@@ -178,14 +198,62 @@ def test_gaussian_expectation():
   np.testing.assert_equal(g_t(0), 16)
   np.testing.assert_equal(g_t(1), 33)
 
+  L = PTrans.gaussian_expectation(n0=2, d0=3, i_list=[1], Sigma=np.array([[4**2]]))
+
+  g_t = L * g
+
+  np.testing.assert_equal(g_t.n, 1)
+
+  np.testing.assert_equal(g_t(0), 16)
+  np.testing.assert_equal(g_t(1), 33)
+
+
 def test_gaussian_expectation2():
 
   g = Polynomial(2, {(0,2): 1, (0,4):2})
 
-  L = PTrans.gaussian_expectation(n0=2, d0=4, i=1, sigma=0.2)
+  L = PTrans.gaussian_expectation_1d(n0=2, d0=4, i=1, sigma=0.2)
 
   g_t = L * g
   np.testing.assert_equal(g_t.n, 1)
 
   np.testing.assert_almost_equal(g_t(0), 0.2**2 + 2*3*0.2**4)
   np.testing.assert_almost_equal(g_t(1), 0.2**2 + 2*3*0.2**4)
+
+  L = PTrans.gaussian_expectation(n0=2, d0=4, i_list=[1], Sigma=np.array([[0.2**2]]))
+
+  g_t = L * g
+  np.testing.assert_equal(g_t.n, 1)
+
+  np.testing.assert_almost_equal(g_t(0), 0.2**2 + 2*3*0.2**4)
+  np.testing.assert_almost_equal(g_t(1), 0.2**2 + 2*3*0.2**4)
+
+def test_gaussian_expectation3():
+
+  L = PTrans.gaussian_expectation(n0=2, d0=8, i_list=[0,1], Sigma=np.array([[0.2, 0], [0, 0.3]]))
+
+  g_t = L * Polynomial(2, {(2,2): 1})
+  np.testing.assert_almost_equal(g_t(0), 0.2*0.3 )
+
+  g_t = L * Polynomial(2, {(2,0): 1})
+  np.testing.assert_almost_equal(g_t(0), 0.2 )
+
+  g_t = L * Polynomial(2, {(0,4): 1})
+  np.testing.assert_almost_equal(g_t(0), 3*0.3**2 )
+
+  g_t = L * Polynomial(2, {(2,4): 1})
+  np.testing.assert_almost_equal(g_t(0), 0.2 * 3*0.3**2 )
+
+def test_gaussian_expectation4():
+
+  Sigma = np.array([[0.2, 0.1], [0.1, 0.3]])
+  L = PTrans.gaussian_expectation(n0=2, d0=8, i_list=[0,1], Sigma=Sigma)
+
+  sum_var = sum(Sigma.ravel())
+
+  # x+y ~ N(0, sum_var)
+
+  # (x+y)^2/sum_var ~ chi2(1), thus (x+y)^2 has expectation sum_var
+
+  g_t = L * Polynomial(2, {(0,2): 1, (2,0): 1, (1,1): 2})
+  np.testing.assert_almost_equal(g_t(0), sum_var )
